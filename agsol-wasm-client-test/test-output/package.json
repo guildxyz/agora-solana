@@ -1,0 +1,17 @@
+{
+  "name": "wasm-client-test",
+  "version": "1.0.0",
+  "description": "Wasm-compatible rpc client tests",
+  "scripts": {
+    "test": "test"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^4.4.4"
+  },
+  "dependencies": {
+    "node-fetch": "^2.5.0",
+    "@solana/web3.js": "^1.30.0"
+  }
+}

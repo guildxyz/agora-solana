@@ -3,4 +3,5 @@ members = [
 	"agsol-borsh-schema",
 	"agsol-common",
 	"agsol-wasm-client",
+	"agsol-wasm-client-test",
 ]

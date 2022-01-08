@@ -45,6 +45,6 @@ pub use rpc_request::RpcRequest;
 #[cfg(feature = "wasm-factory")]
 #[allow(unused_imports)]
 #[macro_use]
-extern crate wasm_factory;
+extern crate agsol_wasm_factory;
 #[cfg(feature = "wasm-factory")]
-pub use wasm_factory::*;
+pub use agsol_wasm_factory::*;

@@ -9,7 +9,6 @@ use std::marker::PhantomData;
 ///
 /// # Examples
 /// ```rust
-/// # use agsol_common_derive::MaxSerializedLen;
 /// use agsol_common::MaxSerializedLen;
 /// use borsh::{BorshSerialize, BorshDeserialize};
 /// use solana_program::pubkey::Pubkey;

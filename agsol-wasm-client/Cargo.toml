@@ -9,7 +9,7 @@ description = "Async RPC client to query the Solana blockchain"
 repository = "https://github.com/agoraxyz/agora-solana"
 
 [features]
-wasm_factory = ["agsol-wasm-factory"]
+wasm-factory = ["agsol-wasm-factory"]
 
 [dependencies]
 agsol-wasm-factory = { path = "./agsol-wasm-factory", optional = true }

@@ -1,5 +1,6 @@
 /target
 Cargo.lock
 
-/node-modules
+node_modules/
 package-lock.json
+test-data/
