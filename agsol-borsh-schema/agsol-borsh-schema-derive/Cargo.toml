@@ -1,0 +1,16 @@
+[package]
+name = "agsol-borsh-schema-derive"
+version = "0.0.1"
+edition = "2021"
+license = "MIT"
+authors = ["Agora DAO <mark@gold.xyz>"]
+keywords = ["borsh", "serialization", "web3", "solana"]
+description = "Derive macro for Borsh schema generation"
+repository = "https://github.com/agoraxyz/agora-solana"
+
+[lib]
+proc_macro = true
+
+[dependencies]
+quote = "1.0"
+syn = "1.0"
