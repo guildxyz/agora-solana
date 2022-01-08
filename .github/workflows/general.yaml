@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: Set env vars
         run: |
-          echo "RUST_NIGHTLY=2021-12-09" >> $GITHUB_ENV
+          echo "RUST_NIGHTLY=1.59.0" >> $GITHUB_ENV
 
       - uses: actions-rs/toolchain@v1
         with:
