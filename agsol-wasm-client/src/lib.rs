@@ -11,7 +11,7 @@
 //! using [`wasm_bindgen`](https://docs.rs/wasm-bindgen/latest/wasm_bindgen/).
 //!
 //! # Examples
-//! ```rust
+//! ```no_run
 //! use agsol_wasm_client::{Net, RpcClient};
 //! use solana_program::pubkey::Pubkey;
 //!
