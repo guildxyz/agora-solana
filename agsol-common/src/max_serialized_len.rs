@@ -9,26 +9,25 @@ use std::marker::PhantomData;
 ///
 /// # Examples
 /// ```rust
+/// # #[macro_use]
+/// # extern crate agsol_common_derive;
 /// use agsol_common::MaxSerializedLen;
 /// use borsh::{BorshSerialize, BorshDeserialize};
 /// use solana_program::pubkey::Pubkey;
 ///
 /// #[derive(BorshSerialize, BorshDeserialize, MaxSerializedLen)]
-/// struct Foo {
-///     foo: u64,
-///     bar: i32,
+/// struct FooStruct {
+///     foo: u64, // max len: 8
+///     bar: i32, // max len: 4
 /// }
 ///
 /// #[derive(BorshSerialize, BorshDeserialize, MaxSerializedLen)]
-/// struct Bar {
-///     foo: [u8; 32],
+/// struct BarStruct {
+///     foo: [u8; 32], // max len: 32
 ///     #[len(4 + 8 * 2)]
-///     bar: Vec<u16>,
-///     baz: Option<u32>,
+///     bar: Vec<u16>, // max len: 20
+///     baz: Option<FooStruct>, // max len: 13
 /// }
-///
-/// assert_eq!(Foo::MAX_SERIALIZED_LEN, 12);
-/// assert_eq!(Bar::MAX_SERIALIZED_LEN, 57);
 ///
 /// #[derive(BorshSerialize, BorshDeserialize, MaxSerializedLen)]
 /// enum FooEnum {
@@ -42,7 +41,11 @@ use std::marker::PhantomData;
 ///     Quux(String), // max len: 1 + 200
 /// }
 ///
+/// # fn main() {
+/// assert_eq!(FooStruct::MAX_SERIALIZED_LEN, 12);
+/// assert_eq!(BarStruct::MAX_SERIALIZED_LEN, 65);
 /// assert_eq!(FooEnum::MAX_SERIALIZED_LEN, 201);
+/// # }
 /// ```
 ///
 /// # Notes

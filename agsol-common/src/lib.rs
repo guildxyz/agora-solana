@@ -1,8 +1,3 @@
-#[cfg(any(test, feature = "derive"))]
-#[allow(unused_imports)]
-#[macro_use]
-extern crate agsol_common_derive;
-
 mod account_state;
 mod locked_item;
 mod max_len_btree;
@@ -21,5 +16,9 @@ pub use max_serialized_len::MaxSerializedLen;
 pub use signer_pda::{SignerPda, SignerPdaError};
 pub use timelock::{Timelock, TimelockError};
 
-#[cfg(feature = "derive")]
+#[cfg(any(test, feature = "derive"))]
+#[allow(unused_imports)]
+#[macro_use]
+extern crate agsol_common_derive;
+#[cfg(any(test, feature = "derive"))]
 pub use agsol_common_derive::*;

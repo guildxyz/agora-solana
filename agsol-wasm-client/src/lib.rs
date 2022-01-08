@@ -42,9 +42,9 @@ pub use rpc_client::{Net, RpcClient};
 pub use rpc_config::{Encoding, RpcConfig};
 pub use rpc_request::RpcRequest;
 
-#[cfg(feature = "wasm-factory")]
+#[cfg(any(test, feature = "wasm-factory"))]
 #[allow(unused_imports)]
 #[macro_use]
 extern crate agsol_wasm_factory;
-#[cfg(feature = "wasm-factory")]
+#[cfg(any(test, feature = "wasm-factory"))]
 pub use agsol_wasm_factory::*;
