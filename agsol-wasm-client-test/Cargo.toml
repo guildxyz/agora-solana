@@ -2,6 +2,9 @@
 name = "agsol-wasm-client-test"
 version = "0.0.1"
 edition = "2021"
+license = "MIT"
+authors = ["Agora DAO <mark@gold.xyz>"]
+repository = "https://github.com/agoraxyz/agora-solana"
 
 [lib]
 crate-type = ["cdylib", "lib"]

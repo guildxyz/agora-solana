@@ -2,6 +2,7 @@
 members = [
 	"agsol-borsh-schema",
 	"agsol-common",
+	"agsol-glue",
 	"agsol-wasm-client",
 	"agsol-wasm-client-test",
 ]
