@@ -1,6 +1,6 @@
 [package]
 name = "agsol-borsh-schema"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 license = "MIT"
 authors = ["Agora DAO <mark@gold.xyz>"]
@@ -17,7 +17,7 @@ anyhow = { version = "1.0", optional = true }
 heck = { version = "0.3.3", optional = true }
 proc-macro2 = { version = "1.0", optional = true }
 quote = { version = "1.0", optional = true }
-syn = { version = "1.0", optional = true }
+syn = { version = "1.0", features = ["full", "parsing"], optional = true }
 
 [dev-dependencies]
 borsh = "0.9.1"
