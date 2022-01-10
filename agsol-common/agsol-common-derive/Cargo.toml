@@ -4,6 +4,7 @@ version = "0.0.1"
 edition = "2021"
 license = "MIT"
 authors = ["Agora DAO <mark@gold.xyz>"]
+description = "Derive macros for common traits used in `agsol-common`"
 keywords = ["web3", "solana"]
 repository = "https://github.com/agoraxyz/agora-solana"
 
