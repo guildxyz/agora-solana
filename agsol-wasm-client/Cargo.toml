@@ -1,0 +1,26 @@
+[package]
+name = "agsol-wasm-client"
+version = "0.0.1"
+edition = "2021"
+license = "MIT"
+authors = ["Agora DAO <mark@gold.xyz>"]
+keywords = ["web3", "solana", "wasm", "rpc"]
+description = "Async RPC client to query the Solana blockchain"
+repository = "https://github.com/agoraxyz/agora-solana"
+
+[features]
+wasm-factory = ["agsol-wasm-factory"]
+
+[dependencies]
+agsol-wasm-factory = { path = "./agsol-wasm-factory", optional = true }
+anyhow = "1"
+base64 = "0.13"
+borsh = "0.9"
+bs58 = "0.4"
+reqwest = { version = "0.11", features = ["json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+solana-program = "1.9.0"
+
+[dev-dependencies]
+tokio = { version = "1.0", features = ["full"] }

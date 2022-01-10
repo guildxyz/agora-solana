@@ -1,0 +1,9 @@
+[workspace]
+members = [
+	"agsol-borsh-schema",
+	"agsol-common",
+	"agsol-glue",
+	"agsol-testbench",
+	"agsol-wasm-client",
+	"agsol-wasm-client-test",
+]
