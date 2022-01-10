@@ -4,6 +4,7 @@ version = "0.0.1"
 edition = "2021"
 license = "MIT"
 authors = ["Agora DAO <mark@gold.xyz>"]
+description = "Tool for generating TS schema and wasm bindings from solana contracts"
 repository = "https://github.com/agoraxyz/agora-solana"
 
 [dependencies]
@@ -11,4 +12,4 @@ anyhow = "1.0"
 env_logger = "0.9.0"
 log = "0.4"
 structopt = "0.3"
-agsol-borsh-schema = { path = "../agsol-borsh-schema", features = ["full"] }
+agsol-borsh-schema = { version = "0.0.1", path = "../agsol-borsh-schema", features = ["full"] }
