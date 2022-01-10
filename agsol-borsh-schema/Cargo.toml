@@ -12,7 +12,7 @@ repository = "https://github.com/agoraxyz/agora-solana"
 full = ["anyhow", "heck", "proc-macro2", "quote", "syn"]
 
 [dependencies]
-agsol-borsh-schema-derive = { path = "./agsol-borsh-schema-derive" }
+agsol-borsh-schema-derive = { version = "0.0.1", path = "./agsol-borsh-schema-derive" }
 anyhow = { version = "1.0", optional = true }
 heck = { version = "0.3.3", optional = true }
 proc-macro2 = { version = "1.0", optional = true }
