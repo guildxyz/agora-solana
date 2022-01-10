@@ -12,7 +12,7 @@ repository = "https://github.com/agoraxyz/agora-solana"
 wasm-factory = ["agsol-wasm-factory"]
 
 [dependencies]
-agsol-wasm-factory = { path = "./agsol-wasm-factory", optional = true }
+agsol-wasm-factory = { version = "0.0.1", path = "./agsol-wasm-factory", optional = true }
 anyhow = "1"
 base64 = "0.13"
 borsh = "0.9"
@@ -23,4 +23,5 @@ serde_json = "1.0"
 solana-program = "1.9.0"
 
 [dev-dependencies]
+agsol-wasm-factory = { version = "0.0.1", path = "./agsol-wasm-factory" }
 tokio = { version = "1.0", features = ["full"] }
