@@ -5,6 +5,7 @@ edition = "2021"
 license = "MIT"
 authors = ["Agora DAO <mark@gold.xyz>"]
 keywords = ["web3", "solana", "wasm"]
+description = "Macro that ports an Instruction factory to Wasm"
 repository = "https://github.com/agoraxyz/agora-solana"
 
 [lib]
