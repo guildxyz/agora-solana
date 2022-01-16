@@ -76,6 +76,10 @@ impl<T, const N: usize> MaxLenVec<T, N> {
         }
     }
 
+    pub fn remove(&mut self, index: usize) {
+        self.contents.remove(index);
+    }
+
     pub fn get_last_element(&self) -> Option<&T> {
         if self.is_empty() {
             None
@@ -145,6 +149,16 @@ mod test_max_len_vec {
         vec.pop();
         assert!(vec.insert(3, 12).is_ok());
         assert_eq!(vec.contents(), &[3, 53, 23, 12, 33]);
+        vec.remove(2);
+        assert_eq!(vec.contents(), &[3, 53, 12, 33]);
+        vec.remove(1);
+        assert_eq!(vec.contents(), &[3, 12, 33]);
+        vec.remove(0);
+        assert_eq!(vec.contents(), &[12, 33]);
+        vec.remove(1);
+        assert_eq!(vec.contents(), &[12]);
+        vec.pop();
+        assert!(vec.is_empty());
     }
 
     #[test]
