@@ -3,17 +3,22 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::clock::UnixTimestamp;
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
-pub struct Timelock<T: MaxSerializedLen + Clone, const N: usize>(Vec<LockedItem<T>>);
+pub struct Timelock<T: BorshDeserialize + BorshSerialize + MaxSerializedLen, const N: usize>(
+    Vec<LockedItem<T>>,
+);
 
-impl<T: MaxSerializedLen + Clone, const N: usize> MaxSerializedLen for Timelock<T, N> {
+impl<T, const N: usize> MaxSerializedLen for Timelock<T, N>
+where
+    T: BorshSerialize + BorshDeserialize + MaxSerializedLen,
+{
     const MAX_SERIALIZED_LEN: usize = 4 + N * (T::MAX_SERIALIZED_LEN + 8); // UnixTimestamp is an extra 8 bytes
 }
 
-impl<T, const N: usize> AccountState for Timelock<T, N> where T: MaxSerializedLen + Clone {}
-
+//impl<T, const N: usize> AccountState for Timelock<T, N> where T: MaxSerializedLen + Clone {}
+//
 impl<T, const N: usize> Timelock<T, N>
 where
-    T: MaxSerializedLen + Clone,
+    T: BorshSerialize + BorshDeserialize + MaxSerializedLen,
 {
     pub fn new() -> Self {
         Self(Vec::new())
@@ -54,7 +59,7 @@ where
 
 impl<T, const N: usize> Default for Timelock<T, N>
 where
-    T: MaxSerializedLen + Clone,
+    T: BorshSerialize + BorshDeserialize + MaxSerializedLen,
 {
     fn default() -> Self {
         Self::new()

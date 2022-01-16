@@ -1,4 +1,3 @@
-use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::pubkey::Pubkey;
 use std::marker::PhantomData;
 
@@ -53,7 +52,7 @@ use std::marker::PhantomData;
 /// the way the maximum lengths of the variants are computed. Therefore, it is
 /// not recommended to derive `MaxSerializedLen` for enums like that, rather it
 /// should be implemented manually.
-pub trait MaxSerializedLen: BorshDeserialize + BorshSerialize {
+pub trait MaxSerializedLen {
     const MAX_SERIALIZED_LEN: usize;
 }
 
@@ -93,6 +92,7 @@ impl<T> MaxSerializedLen for PhantomData<T> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use borsh::{BorshSerialize, BorshDeserialize};
     use solana_program::clock::UnixTimestamp;
 
     #[derive(BorshSerialize, BorshDeserialize, MaxSerializedLen, Debug)]
