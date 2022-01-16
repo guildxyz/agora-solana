@@ -1,9 +1,11 @@
 use super::MaxSerializedLen;
-
-use anyhow::ensure;
 use borsh::{BorshDeserialize, BorshSerialize};
-
 use std::convert::TryFrom;
+
+// NOTE anyhow doesn't compile under bpf it seems
+// TODO move these 2 lines to lib.rs and use for max_len_str + max_len_btree
+const CONTENTS_FULL: &str = "contents full";
+type MaxLenResult = Result<(), &'static str>;
 
 #[repr(C)]
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug)]
@@ -45,10 +47,13 @@ impl<T, const N: usize> MaxLenVec<T, N> {
         self.contents.as_mut_slice()
     }
 
-    pub fn push(&mut self, elem: T) -> Result<(), anyhow::Error> {
-        ensure!(!self.is_full());
-        self.contents.push(elem);
-        Ok(())
+    pub fn push(&mut self, elem: T) -> MaxLenResult {
+        if self.is_full() {
+            Err(CONTENTS_FULL)
+        } else {
+            self.contents.push(elem);
+            Ok(())
+        }
     }
 
     pub fn pop(&mut self) -> Option<T> {
@@ -62,10 +67,13 @@ impl<T, const N: usize> MaxLenVec<T, N> {
         self.contents.push(elem);
     }
 
-    pub fn insert(&mut self, index: usize, value: T) -> Result<(), anyhow::Error> {
-        ensure!(!self.is_full());
-        self.contents.insert(index, value);
-        Ok(())
+    pub fn insert(&mut self, index: usize, value: T) -> MaxLenResult {
+        if self.is_full() {
+            Err(CONTENTS_FULL)
+        } else {
+            self.contents.insert(index, value);
+            Ok(())
+        }
     }
 
     pub fn get_last_element(&self) -> Option<&T> {
@@ -78,11 +86,14 @@ impl<T, const N: usize> MaxLenVec<T, N> {
 }
 
 impl<T, const N: usize> TryFrom<Vec<T>> for MaxLenVec<T, N> {
-    type Error = anyhow::Error;
+    type Error = &'static str;
 
     fn try_from(vec: Vec<T>) -> Result<Self, Self::Error> {
-        ensure!(vec.len() <= N);
-        Ok(Self { contents: vec })
+        if vec.len() > N {
+            Err(CONTENTS_FULL)
+        } else {
+            Ok(Self { contents: vec })
+        }
     }
 }
 
