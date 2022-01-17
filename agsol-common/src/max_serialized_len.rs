@@ -92,7 +92,7 @@ impl<T> MaxSerializedLen for PhantomData<T> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use borsh::{BorshSerialize, BorshDeserialize};
+    use borsh::{BorshDeserialize, BorshSerialize};
     use solana_program::clock::UnixTimestamp;
 
     #[derive(BorshSerialize, BorshDeserialize, MaxSerializedLen, Debug)]

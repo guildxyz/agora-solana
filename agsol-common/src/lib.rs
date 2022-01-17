@@ -22,3 +22,6 @@ pub use timelock::{Timelock, TimelockError};
 extern crate agsol_common_derive;
 #[cfg(any(test, feature = "derive"))]
 pub use agsol_common_derive::*;
+
+const CONTENTS_FULL: &str = "contents full";
+type MaxLenResult = Result<(), &'static str>;

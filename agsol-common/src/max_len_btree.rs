@@ -1,7 +1,8 @@
-use super::MaxSerializedLen;
+use super::{MaxSerializedLen, CONTENTS_FULL};
 
 use borsh::{BorshDeserialize, BorshSerialize};
 
+use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::hash::Hash;
@@ -47,9 +48,12 @@ where
         self.contents.len() == N
     }
 
-    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
-        assert!(!self.is_full(), "MaxLenBtreeMap is full");
-        self.contents.insert(key, value)
+    pub fn insert(&mut self, key: K, value: V) -> Result<Option<V>, &'static str> {
+        if self.contents.keys().any(|k| k.cmp(&key) == Ordering::Equal) || !self.is_full() {
+            Ok(self.contents.insert(key, value))
+        } else {
+            Err(CONTENTS_FULL)
+        }
     }
 
     pub fn remove(&mut self, key: &K) -> Option<V> {
@@ -82,14 +86,11 @@ where
     K: MaxSerializedLen + Clone + Ord + Hash,
     V: MaxSerializedLen + Clone,
 {
-    type Error = String;
+    type Error = &'static str;
 
     fn try_from(btree: BTreeMap<K, V>) -> Result<Self, Self::Error> {
         if btree.len() > N {
-            return Err(format!(
-                "Unable to create MaxLenBTreeMap. BTreeMap has too many elements ({})",
-                btree.len()
-            ));
+            return Err(CONTENTS_FULL);
         }
         Ok(Self { contents: btree })
     }
@@ -141,14 +142,20 @@ mod test_max_len_btreemap {
         assert!(test_btree.try_to_vec().unwrap().len() <= TestBTree::MAX_SERIALIZED_LEN);
 
         for i in 0..4 {
-            test_btree.insert(i as u8, i);
+            assert!(test_btree.insert(i as u8, i).is_ok());
         }
+        // re-insert with the same key
+        assert_eq!(test_btree.insert(1_u8, 2), Ok(Some(1)));
 
         assert!(test_btree.try_to_vec().unwrap().len() <= TestBTree::MAX_SERIALIZED_LEN);
-        test_btree.insert(83_u8, 81237);
+        assert!(test_btree.insert(83_u8, 81237).is_ok());
         assert_eq!(
             test_btree.try_to_vec().unwrap().len(),
             TestBTree::MAX_SERIALIZED_LEN
         );
+
+        assert_eq!(test_btree.insert(85_u8, 81237), Err(CONTENTS_FULL));
+        // re-insert into full map
+        assert_eq!(test_btree.insert(3_u8, 4), Ok(Some(3)));
     }
 }

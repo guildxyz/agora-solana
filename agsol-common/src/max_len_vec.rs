@@ -1,11 +1,8 @@
-use super::MaxSerializedLen;
+use super::{MaxLenResult, MaxSerializedLen, CONTENTS_FULL};
 use borsh::{BorshDeserialize, BorshSerialize};
 use std::convert::TryFrom;
 
 // NOTE anyhow doesn't compile under bpf it seems
-// TODO move these 2 lines to lib.rs and use for max_len_str + max_len_btree
-const CONTENTS_FULL: &str = "contents full";
-type MaxLenResult = Result<(), &'static str>;
 
 #[repr(C)]
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug)]
