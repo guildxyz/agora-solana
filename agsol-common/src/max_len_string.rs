@@ -1,4 +1,4 @@
-use super::MaxSerializedLen;
+use super::{MaxSerializedLen, CONTENTS_FULL};
 
 use borsh::{BorshDeserialize, BorshSerialize};
 
@@ -14,39 +14,22 @@ impl<const N: usize> MaxSerializedLen for MaxLenString<N> {
     const MAX_SERIALIZED_LEN: usize = 4 + N;
 }
 
-impl<const N: usize> MaxLenString<N> {
-    pub fn new(string: String) -> Self {
-        assert!(string.as_bytes().len() <= N);
-        Self { contents: string }
-    }
-}
-
 impl<const N: usize> TryFrom<String> for MaxLenString<N> {
-    type Error = String;
+    type Error = &'static str;
 
     fn try_from(string: String) -> Result<Self, Self::Error> {
-        if string.len() > N {
-            return Err(format!(
-                "Unable to create MaxLenString. String has too many elements ({})",
-                string.len()
-            ));
+        if string.as_bytes().len() > N {
+            return Err(CONTENTS_FULL);
         }
         Ok(Self { contents: string })
     }
 }
 
 impl<const N: usize> TryFrom<&str> for MaxLenString<N> {
-    type Error = String;
+    type Error = &'static str;
 
     fn try_from(string_slice: &str) -> Result<Self, Self::Error> {
-        let string = string_slice.to_string();
-        if string.len() > N {
-            return Err(format!(
-                "Unable to create MaxLenString. String has too many elements ({})",
-                string.len()
-            ));
-        }
-        Ok(Self { contents: string })
+        Self::try_from(string_slice.to_owned())
     }
 }
 
@@ -78,10 +61,10 @@ mod test_max_len_string {
 
     #[test]
     fn max_len_string_serialized_len() {
-        let test_string: TestString = TestString::new("asd".to_string());
+        let test_string: TestString = TestString::try_from("asd").unwrap();
         assert!(test_string.try_to_vec().unwrap().len() <= TestString::MAX_SERIALIZED_LEN);
 
-        let test_string: TestString = TestString::new("asdef".to_string());
+        let test_string: TestString = TestString::try_from("asdef".to_string()).unwrap();
         assert_eq!(
             test_string.try_to_vec().unwrap().len(),
             TestString::MAX_SERIALIZED_LEN
