@@ -1,15 +1,11 @@
-use super::MaxSerializedLen;
+use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::account_info::AccountInfo;
 use solana_program::borsh::try_from_slice_unchecked;
 use solana_program::program_error::ProgramError;
 
 /// Something that can be read from or written into a Solana account's data
 /// field.
-///
-/// It needs to implement [`MaxSerializedLen`](super::MaxSerializedLen) because
-/// the account that holds this state needs to know the maximum size of the
-/// stored data upon account creation.
-pub trait AccountState: MaxSerializedLen {
+pub trait AccountState: BorshSerialize + BorshDeserialize {
     fn read(account: &AccountInfo) -> Result<Self, ProgramError>
     where
         Self: Sized,
@@ -26,7 +22,7 @@ pub trait AccountState: MaxSerializedLen {
 #[cfg(test)]
 mod test {
     use super::*;
-    use borsh::{BorshDeserialize, BorshSerialize};
+    use crate::MaxSerializedLen;
     use solana_program::pubkey::Pubkey;
     use std::cell::RefCell;
     use std::rc::Rc;

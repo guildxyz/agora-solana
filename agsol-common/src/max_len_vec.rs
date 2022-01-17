@@ -1,128 +1,106 @@
-use super::MaxSerializedLen;
-
+use super::{MaxLenResult, MaxSerializedLen, CONTENTS_FULL};
 use borsh::{BorshDeserialize, BorshSerialize};
-
-use std::collections::VecDeque;
 use std::convert::TryFrom;
-use std::ops::Index;
+
+// NOTE anyhow doesn't compile under bpf it seems
 
 #[repr(C)]
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug)]
-pub struct MaxLenVec<T, const N: usize>
-where
-    T: MaxSerializedLen + Clone,
-{
-    contents: VecDeque<T>,
+pub struct MaxLenVec<T, const N: usize> {
+    contents: Vec<T>,
 }
 
 impl<T, const N: usize> MaxSerializedLen for MaxLenVec<T, N>
 where
-    T: MaxSerializedLen + Clone,
+    T: MaxSerializedLen,
 {
     const MAX_SERIALIZED_LEN: usize = 4 + N * T::MAX_SERIALIZED_LEN;
 }
 
-impl<T, const N: usize> MaxLenVec<T, N>
-where
-    T: MaxSerializedLen + Clone,
-{
+impl<T, const N: usize> MaxLenVec<T, N> {
     pub fn new() -> Self {
         MaxLenVec {
-            contents: VecDeque::with_capacity(N),
+            contents: Vec::with_capacity(N),
         }
-    }
-
-    pub fn len(&self) -> usize {
-        self.contents.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.contents.len() == 0
     }
 
     pub fn is_full(&self) -> bool {
         self.contents.len() == N
     }
 
-    pub fn push(&mut self, elem: T) {
-        self.contents.push_back(elem);
+    pub fn is_empty(&self) -> bool {
+        self.contents.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.contents.len()
+    }
+
+    pub fn contents(&self) -> &[T] {
+        self.contents.as_slice()
+    }
+
+    pub fn contents_mut(&mut self) -> &mut [T] {
+        self.contents.as_mut_slice()
+    }
+
+    pub fn push(&mut self, elem: T) -> MaxLenResult {
+        if self.is_full() {
+            Err(CONTENTS_FULL)
+        } else {
+            self.contents.push(elem);
+            Ok(())
+        }
     }
 
     pub fn pop(&mut self) -> Option<T> {
-        self.contents.pop_back()
+        self.contents.pop()
     }
 
     pub fn cyclic_push(&mut self, elem: T) {
         if self.is_full() {
-            self.contents.pop_front();
+            self.contents.remove(0);
         }
-        self.contents.push_back(elem);
+        self.contents.push(elem);
     }
 
-    pub fn get(&self, index: usize) -> Option<&T> {
-        self.contents.get(index)
+    pub fn insert(&mut self, index: usize, value: T) -> MaxLenResult {
+        if self.is_full() {
+            Err(CONTENTS_FULL)
+        } else {
+            self.contents.insert(index, value);
+            Ok(())
+        }
     }
 
-    pub fn get_last_element(&self) -> Option<T> {
+    pub fn remove(&mut self, index: usize) {
+        self.contents.remove(index);
+    }
+
+    pub fn get_last_element(&self) -> Option<&T> {
         if self.is_empty() {
-            return None;
+            None
+        } else {
+            Some(&self.contents[self.contents.len() - 1])
         }
-        Some(self.contents.get(self.len() - 1).unwrap().clone())
     }
 }
 
-impl<T, const N: usize> TryFrom<VecDeque<T>> for MaxLenVec<T, N>
-where
-    T: MaxSerializedLen + Clone,
-{
-    type Error = String;
-
-    fn try_from(vecdeq: VecDeque<T>) -> Result<Self, Self::Error> {
-        if vecdeq.len() > N {
-            return Err(format!(
-                "Unable to create MaxLenVec. VecDeque has too many elements ({})",
-                vecdeq.len()
-            ));
-        }
-        Ok(Self { contents: vecdeq })
-    }
-}
-
-impl<T, const N: usize> TryFrom<Vec<T>> for MaxLenVec<T, N>
-where
-    T: MaxSerializedLen + Clone,
-{
-    type Error = String;
+impl<T, const N: usize> TryFrom<Vec<T>> for MaxLenVec<T, N> {
+    type Error = &'static str;
 
     fn try_from(vec: Vec<T>) -> Result<Self, Self::Error> {
         if vec.len() > N {
-            return Err(format!(
-                "Unable to create MaxLenVec. Vec has too many elements ({})",
-                vec.len()
-            ));
+            Err(CONTENTS_FULL)
+        } else {
+            Ok(Self { contents: vec })
         }
-        Ok(Self {
-            contents: vec.into(),
-        })
     }
 }
 
-impl<T, const N: usize> Default for MaxLenVec<T, N>
-where
-    T: MaxSerializedLen + Clone,
-{
+impl<T, const N: usize> Default for MaxLenVec<T, N> {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl<T, const N: usize> Index<usize> for MaxLenVec<T, N>
-where
-    T: MaxSerializedLen + Clone,
-{
-    type Output = T;
-    fn index(&self, index: usize) -> &T {
-        &self.contents[index]
     }
 }
 
@@ -130,27 +108,63 @@ where
 mod test_max_len_vec {
     use super::*;
 
-    type TestVec = MaxLenVec<u8, 5>;
+    const CAPACITY: usize = 5;
+    type TestVec = MaxLenVec<u8, CAPACITY>;
 
     #[test]
-    fn valid_conversions() {
+    fn initialization() {
+        assert_eq!(TestVec::new().contents.capacity(), CAPACITY);
         let vec: Vec<u8> = vec![1, 2, 3, 4, 5];
-        let deque: VecDeque<u8> = vec.clone().into();
-
-        let max_len_vec = TestVec::try_from(vec).unwrap();
-        assert_eq!(deque, max_len_vec.contents);
-
-        let max_len_vec = TestVec::try_from(deque.clone()).unwrap();
-        assert_eq!(deque, max_len_vec.contents);
+        assert!(TestVec::try_from(vec).is_ok());
+        let long_vec: Vec<u8> = vec![1, 2, 3, 4, 5, 6];
+        assert!(TestVec::try_from(long_vec).is_err());
     }
 
     #[test]
-    fn invalid_conversions() {
-        let long_vec: Vec<u8> = vec![1, 2, 3, 4, 5, 6];
-        assert!(TestVec::try_from(long_vec.clone()).is_err());
+    fn dynamic_updates() {
+        let mut vec = TestVec::new();
+        assert_eq!(vec.get_last_element(), None);
+        for i in 0..CAPACITY {
+            assert!(vec.push(i as u8).is_ok());
+        }
+        assert_eq!(vec.len(), CAPACITY);
+        assert!(vec.push(32).is_err());
+        vec.cyclic_push(32);
+        assert_eq!(vec.contents(), &[1, 2, 3, 4, 32]);
+        assert_eq!(vec.get_last_element(), Some(&32));
+        vec.pop();
+        vec.pop();
+        assert_eq!(vec.contents(), &[1, 2, 3]);
+        vec.cyclic_push(53);
+        assert_eq!(vec.contents(), &[1, 2, 3, 53]);
+        vec.cyclic_push(23);
+        vec.cyclic_push(33);
+        vec.cyclic_push(73);
+        assert_eq!(vec.contents(), &[3, 53, 23, 33, 73]);
+        assert_eq!(vec.get_last_element(), Some(&73));
+        assert!(vec.insert(3, 12).is_err());
+        vec.pop();
+        assert!(vec.insert(3, 12).is_ok());
+        assert_eq!(vec.contents(), &[3, 53, 23, 12, 33]);
+        vec.remove(2);
+        assert_eq!(vec.contents(), &[3, 53, 12, 33]);
+        vec.remove(1);
+        assert_eq!(vec.contents(), &[3, 12, 33]);
+        vec.remove(0);
+        assert_eq!(vec.contents(), &[12, 33]);
+        vec.remove(1);
+        assert_eq!(vec.contents(), &[12]);
+        vec.pop();
+        assert!(vec.is_empty());
+    }
 
-        let long_deque: VecDeque<u8> = long_vec.into();
-        assert!(TestVec::try_from(long_deque).is_err());
+    #[test]
+    fn static_updates() {
+        let mut vec = TestVec::try_from(vec![3, 5, 2, 1, 4]).unwrap();
+        vec.contents_mut().sort_unstable();
+        assert_eq!(vec.contents(), &[1, 2, 3, 4, 5]);
+        vec.contents_mut()[2] = 10;
+        assert_eq!(vec.contents(), &[1, 2, 10, 4, 5]);
     }
 
     #[test]
@@ -159,11 +173,11 @@ mod test_max_len_vec {
         assert!(test_vec.try_to_vec().unwrap().len() <= TestVec::MAX_SERIALIZED_LEN);
 
         for i in 0..4 {
-            test_vec.push(i);
+            assert!(test_vec.push(i).is_ok());
         }
         assert!(test_vec.try_to_vec().unwrap().len() <= TestVec::MAX_SERIALIZED_LEN);
 
-        test_vec.push(4);
+        assert!(test_vec.push(4).is_ok());
         assert_eq!(
             test_vec.try_to_vec().unwrap().len(),
             TestVec::MAX_SERIALIZED_LEN
