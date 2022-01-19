@@ -27,15 +27,15 @@ impl<'a, 'b> SignerPda<'a, 'b> {
         })
     }
 
-    /// Checks whether there's an existing PDA account with the program as its
-    /// owner.
-    pub fn check_existing(
+    /// Checks whether there's an existing PDA account with the provided owner.
+    pub fn check_owner(
         seeds: &'b [&'a [u8]],
         program_id: &Pubkey,
+        owner: &Pubkey,
         expected: &AccountInfo,
     ) -> Result<(), ProgramError> {
         Self::find_and_check(seeds, program_id, expected.key)?;
-        if expected.owner != program_id {
+        if expected.owner != owner {
             Err(ProgramError::IllegalOwner)
         } else {
             Ok(())
@@ -108,15 +108,17 @@ mod test {
             ProgramError::InvalidSeeds
         );
         // check existing
-        assert!(SignerPda::check_existing(seeds, &program_id, &account_info).is_ok());
+        assert!(SignerPda::check_owner(seeds, &program_id, &program_id, &account_info).is_ok());
         // bad owner
         let new_owner = Pubkey::new_unique();
         account_info.owner = &new_owner;
         assert_eq!(
-            SignerPda::check_existing(seeds, &program_id, &account_info)
+            SignerPda::check_owner(seeds, &program_id, &program_id, &account_info)
                 .err()
                 .unwrap(),
             ProgramError::IllegalOwner
         );
+
+        assert!(SignerPda::check_owner(seeds, &program_id, &new_owner, &account_info).is_ok());
     }
 }
