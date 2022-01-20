@@ -52,10 +52,10 @@
 //! };
 //!
 //! // load programs into the test context
-//! let mut testbench = Testbench::new(&[program_from_processor, program_from_binary]).await;
+//! let mut testbench = Testbench::new(&[program_from_processor, program_from_binary]).await.unwrap();
 //!
 //! // create a test user with an airdrop
-//! let test_user = TestUser::new(&mut testbench).await;
+//! let test_user = TestUser::new(&mut testbench).await.unwrap().unwrap();
 //! # }
 //! ```
 
