@@ -11,12 +11,10 @@ use solana_sdk::instruction::Instruction;
 use solana_sdk::signer::keypair::Keypair;
 use solana_sdk::signer::Signer;
 use solana_sdk::system_instruction;
-use solana_sdk::transaction::Transaction;
+use solana_sdk::transaction::{Transaction, TransactionError};
 
 use spl_token::instruction as token_instruction;
 use spl_token::state::{Account as TokenAccount, Mint};
-
-use anyhow::Context;
 
 /// Testbench wrapper around a [`ProgramTestContext`].
 pub struct Testbench {
@@ -24,10 +22,13 @@ pub struct Testbench {
     pub rent: Rent,
 }
 
+pub type TestbenchResult<T> = Result<T, TestbenchError>;
+pub type TestbenchTransactionResult<T> = TestbenchResult<Result<T, TransactionError>>;
+
 impl Testbench {
     /// Create new `Testbench` by loading [`TestbenchProgram`]s into a
     /// [`ProgramTest`] context.
-    pub async fn new(programs: &[TestbenchProgram<'_>]) -> Result<Self, anyhow::Error> {
+    pub async fn new(programs: &[TestbenchProgram<'_>]) -> TestbenchResult<Self> {
         let mut program_test = ProgramTest::default();
 
         for program in programs {
@@ -39,7 +40,7 @@ impl Testbench {
             .banks_client
             .get_rent()
             .await
-            .context("could not fetch rent while constructing testbench")?;
+            .map_err(|_| TestbenchError::RentError)?;
 
         Ok(Self { context, rent })
     }
@@ -60,7 +61,7 @@ impl Testbench {
     pub async fn get_account(
         &mut self,
         account_pubkey: &Pubkey,
-    ) -> Result<Account, TestbenchError> {
+    ) -> TestbenchResult<Account> {
         self.client()
             .get_account(*account_pubkey)
             .await
@@ -69,7 +70,7 @@ impl Testbench {
     }
 
     // TODO make this nicer?
-    pub async fn block_time(&mut self) -> Result<UnixTimestamp, TestbenchError> {
+    pub async fn block_time(&mut self) -> TestbenchResult<UnixTimestamp> {
         let clock_sysvar = self
             .get_account(&solana_program::sysvar::clock::id())
             .await?;
@@ -80,13 +81,13 @@ impl Testbench {
         )
     }
 
-    pub fn warp_to_slot(&mut self, slot: u64) -> Result<(), TestbenchError> {
+    pub fn warp_to_slot(&mut self, slot: u64) -> TestbenchResult<()> {
         self.context
             .warp_to_slot(slot)
             .map_err(|_| TestbenchError::WarpingError)
     }
 
-    pub async fn get_current_slot(&mut self) -> Result<u64, TestbenchError> {
+    pub async fn get_current_slot(&mut self) -> TestbenchResult<u64> {
         Ok(self
             .context
             .banks_client
@@ -95,12 +96,12 @@ impl Testbench {
             .map_err(|_| TestbenchError::WarpingError)?)
     }
 
-    pub async fn warp_n_slots(&mut self, n: u64) -> Result<(), TestbenchError> {
+    pub async fn warp_n_slots(&mut self, n: u64) -> TestbenchResult<()> {
         let current_slot = self.get_current_slot().await?;
         self.warp_to_slot(current_slot + n)
     }
 
-    pub async fn warp_n_seconds(&mut self, n: i64) -> Result<(), TestbenchError> {
+    pub async fn warp_n_seconds(&mut self, n: i64) -> TestbenchResult<()> {
         let clock_start = self.block_time().await?;
         let mut clock_curr = self.block_time().await?;
         while clock_curr < clock_start + n {
@@ -110,7 +111,7 @@ impl Testbench {
         Ok(())
     }
 
-    pub async fn warp_to_finalize(&mut self) -> Result<(), TestbenchError> {
+    pub async fn warp_to_finalize(&mut self) -> TestbenchResult<()> {
         self.warp_n_slots(2).await
     }
 
@@ -119,7 +120,7 @@ impl Testbench {
         instructions: &[Instruction],
         payer: &Keypair,
         signers: Option<&[&Keypair]>,
-    ) -> Result<(), TestbenchError> {
+    ) -> TestbenchTransactionResult<i64> {
         let latest_blockhash = self
             .context
             .banks_client
@@ -136,22 +137,24 @@ impl Testbench {
         transaction.sign(&all_signers, latest_blockhash);
 
         // TransportError has an unwrap method that turns it into a TransactionError
-        self.context
+
+        let payer_balance_before = self.get_account_lamports(&payer.pubkey()).await?;
+        let transaction_result = self.context
             .banks_client
             .process_transaction(transaction)
             .await
-            .map_err(|e| e.unwrap())?;
-
+            .map_err(|e| e.unwrap());
         self.warp_to_finalize().await?;
+        let payer_balance_after = self.get_account_lamports(&payer.pubkey()).await?;
 
-        Ok(())
+        Ok(transaction_result.map(|_| payer_balance_after as i64 - payer_balance_before as i64))
     }
 
     pub async fn create_mint(
         &mut self,
         decimals: u8,
         mint_authority: &Pubkey,
-    ) -> Result<Pubkey, TestbenchError> {
+    ) -> TestbenchTransactionResult<Pubkey> {
         let mint_keypair = Keypair::new();
         let mint_rent = self.rent.minimum_balance(Mint::LEN);
         let instructions = [
@@ -175,16 +178,16 @@ impl Testbench {
 
         let payer = self.clone_payer();
         self.process_transaction(&instructions, &payer, Some(&[&mint_keypair]))
-            .await?;
+            .await
+            .map(|transaction_result| transaction_result.map(|_| mint_keypair.pubkey()))
 
-        Ok(mint_keypair.pubkey())
     }
 
     pub async fn create_token_holding_account(
         &mut self,
         owner: &Keypair,
         mint: &Pubkey,
-    ) -> Result<Pubkey, TestbenchError> {
+    ) -> TestbenchTransactionResult<Pubkey> {
         let account_keypair = Keypair::new();
         let mint_rent = self.rent.minimum_balance(TokenAccount::LEN);
         let instructions = [
@@ -206,10 +209,9 @@ impl Testbench {
         ];
 
         let payer = self.clone_payer();
-        self.process_transaction(&instructions, &payer, Some(&[owner, &account_keypair]))
-            .await?;
-
-        Ok(account_keypair.pubkey())
+        self.process_transaction(&instructions, &payer, Some(&[&account_keypair]))
+            .await
+            .map(|transaction_result| transaction_result.map(|_| account_keypair.pubkey()))
     }
 
     pub async fn mint_to_account(
@@ -217,7 +219,7 @@ impl Testbench {
         mint: &Pubkey,
         account: &Pubkey,
         amount: u64,
-    ) -> Result<(), TestbenchError> {
+    ) -> TestbenchTransactionResult<()> {
         // unwrap is fine here because mint_to only throws error if the token program id is incorrect
         let instruction = token_instruction::mint_to(
             &spl_token::id(),
@@ -231,12 +233,11 @@ impl Testbench {
 
         let signer = self.clone_payer();
         self.process_transaction(&[instruction], &signer, Some(&[&signer]))
-            .await?;
-
-        Ok(())
+            .await
+            .map(|transaction_result| transaction_result.map(|_| () ))
     }
 
-    pub async fn token_balance(&mut self, token_account: &Pubkey) -> Result<u64, TestbenchError> {
+    pub async fn token_balance(&mut self, token_account: &Pubkey) -> TestbenchResult<u64> {
         let data: TokenAccount = self
             .client()
             .get_packed_account_data(*token_account)
@@ -246,7 +247,7 @@ impl Testbench {
         Ok(data.amount)
     }
 
-    pub async fn total_supply(&mut self, mint_account: &Pubkey) -> Result<u64, TestbenchError> {
+    pub async fn total_supply(&mut self, mint_account: &Pubkey) -> TestbenchResult<u64> {
         let data: Mint = self
             .client()
             .get_packed_account_data(*mint_account)
@@ -259,21 +260,21 @@ impl Testbench {
     pub async fn get_account_lamports(
         &mut self,
         account_pubkey: &Pubkey,
-    ) -> Result<u64, TestbenchError> {
+    ) -> TestbenchResult<u64> {
         Ok(self.get_account(account_pubkey).await?.lamports)
     }
 
     pub async fn get_account_data(
         &mut self,
         account_pubkey: &Pubkey,
-    ) -> Result<Vec<u8>, TestbenchError> {
+    ) -> TestbenchResult<Vec<u8>> {
         Ok(self.get_account(account_pubkey).await?.data)
     }
 
     pub async fn get_and_deserialize_account_data<T: BorshDeserialize>(
         &mut self,
         account_pubkey: &Pubkey,
-    ) -> Result<T, TestbenchError> {
+    ) -> TestbenchResult<T> {
         let account_data = self.get_account_data(account_pubkey).await?;
         try_from_slice_unchecked(account_data.as_slice())
             .map_err(|_| TestbenchError::CouldNotDeserialize)
@@ -282,7 +283,7 @@ impl Testbench {
     pub async fn get_token_account(
         &mut self,
         account_pubkey: &Pubkey,
-    ) -> Result<TokenAccount, TestbenchError> {
+    ) -> TestbenchResult<TokenAccount> {
         let account_data = self.get_account_data(account_pubkey).await?;
         TokenAccount::unpack_from_slice(&account_data)
             .map_err(|_| TestbenchError::CouldNotDeserialize)
@@ -291,7 +292,7 @@ impl Testbench {
     pub async fn get_mint_account(
         &mut self,
         account_pubkey: &Pubkey,
-    ) -> Result<Mint, TestbenchError> {
+    ) -> TestbenchResult<Mint> {
         let account_data = self.get_account_data(account_pubkey).await?;
         Mint::unpack_from_slice(&account_data).map_err(|_| TestbenchError::CouldNotDeserialize)
     }

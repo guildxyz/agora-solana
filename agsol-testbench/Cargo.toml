@@ -7,7 +7,6 @@ authors = ["Agora DAO <mark@gold.xyz>"]
 repository = "https://github.com/agoraxyz/agora-solana"
 
 [dependencies]
-anyhow = "1"
 borsh = "0.9.0"
 serde = "1.0"
 solana-program = "1.9.0"

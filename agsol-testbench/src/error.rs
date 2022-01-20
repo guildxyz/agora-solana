@@ -1,7 +1,7 @@
 #[derive(Debug, PartialEq, thiserror::Error)]
 pub enum TestbenchError {
-    #[error(transparent)]
-    TransactionError(#[from] solana_sdk::transaction::TransactionError),
+    #[error("Could not fetch rent")]
+    RentError,
     #[error("Warping error")]
     WarpingError,
     #[error("Account not found")]

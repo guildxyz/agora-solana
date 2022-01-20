@@ -67,5 +67,5 @@ mod testbench_program;
 pub use error::TestbenchError;
 pub use solana_program_test::{self, tokio};
 pub use test_user::TestUser;
-pub use testbench::Testbench;
+pub use testbench::{Testbench, TestbenchResult, TestbenchTransactionResult};
 pub use testbench_program::TestbenchProgram;
