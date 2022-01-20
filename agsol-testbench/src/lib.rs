@@ -59,10 +59,12 @@
 //! # }
 //! ```
 
+mod error;
 mod test_user;
 mod testbench;
 mod testbench_program;
 
+pub use error::TestbenchError;
 pub use solana_program_test::{self, tokio};
 pub use test_user::TestUser;
 pub use testbench::Testbench;
