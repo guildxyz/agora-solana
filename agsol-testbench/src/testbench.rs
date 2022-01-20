@@ -58,19 +58,22 @@ impl Testbench {
         Keypair::from_bytes(self.context.payer.to_bytes().as_ref()).unwrap()
     }
 
-    pub async fn get_account(&mut self, account_pubkey: &Pubkey) -> TestbenchResult<Account> {
+    pub async fn get_account(
+        &mut self,
+        account_pubkey: &Pubkey,
+    ) -> TestbenchResult<Option<Account>> {
         self.client()
             .get_account(*account_pubkey)
             .await
-            .map_err(|_| TestbenchError::AccountNotFound)? // result
-            .ok_or(TestbenchError::AccountNotFound) // option
+            .map_err(|_| TestbenchError::AccountNotFound) // result
     }
 
     // TODO make this nicer?
     pub async fn block_time(&mut self) -> TestbenchResult<UnixTimestamp> {
         let clock_sysvar = self
             .get_account(&solana_program::sysvar::clock::id())
-            .await?;
+            .await?
+            .ok_or(TestbenchError::AccountNotFound)?;
         Ok(
             solana_sdk::account::from_account::<solana_program::clock::Clock, _>(&clock_sysvar)
                 .ok_or(TestbenchError::CouldNotDeserialize)?
@@ -255,11 +258,19 @@ impl Testbench {
     }
 
     pub async fn get_account_lamports(&mut self, account_pubkey: &Pubkey) -> TestbenchResult<u64> {
-        Ok(self.get_account(account_pubkey).await?.lamports)
+        Ok(self
+            .get_account(account_pubkey)
+            .await?
+            .ok_or(TestbenchError::AccountNotFound)?
+            .lamports)
     }
 
     pub async fn get_account_data(&mut self, account_pubkey: &Pubkey) -> TestbenchResult<Vec<u8>> {
-        Ok(self.get_account(account_pubkey).await?.data)
+        Ok(self
+            .get_account(account_pubkey)
+            .await?
+            .ok_or(TestbenchError::AccountNotFound)?
+            .data)
     }
 
     pub async fn get_and_deserialize_account_data<T: BorshDeserialize>(
