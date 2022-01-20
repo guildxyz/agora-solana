@@ -1,3 +1,7 @@
+// This is necessary because clippy throws 'unneeded unit expression' error
+// on the wasm_bindgen expressions
+#![allow(clippy::unused_unit)]
+
 use agsol_wasm_client::{wasm_instruction, Net, RpcClient};
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::instruction::{AccountMeta, Instruction};

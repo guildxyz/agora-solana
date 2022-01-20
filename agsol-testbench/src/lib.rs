@@ -52,18 +52,20 @@
 //! };
 //!
 //! // load programs into the test context
-//! let mut testbench = Testbench::new(&[program_from_processor, program_from_binary]).await;
+//! let mut testbench = Testbench::new(&[program_from_processor, program_from_binary]).await.unwrap();
 //!
 //! // create a test user with an airdrop
-//! let test_user = TestUser::new(&mut testbench).await;
+//! let test_user = TestUser::new(&mut testbench).await.unwrap().unwrap();
 //! # }
 //! ```
 
+mod error;
 mod test_user;
 mod testbench;
 mod testbench_program;
 
+pub use error::TestbenchError;
 pub use solana_program_test::{self, tokio};
 pub use test_user::TestUser;
-pub use testbench::Testbench;
+pub use testbench::{Testbench, TestbenchResult, TestbenchTransactionResult};
 pub use testbench_program::TestbenchProgram;
