@@ -58,10 +58,7 @@ impl Testbench {
         Keypair::from_bytes(self.context.payer.to_bytes().as_ref()).unwrap()
     }
 
-    pub async fn get_account(
-        &mut self,
-        account_pubkey: &Pubkey,
-    ) -> TestbenchResult<Account> {
+    pub async fn get_account(&mut self, account_pubkey: &Pubkey) -> TestbenchResult<Account> {
         self.client()
             .get_account(*account_pubkey)
             .await
@@ -139,7 +136,8 @@ impl Testbench {
         // TransportError has an unwrap method that turns it into a TransactionError
 
         let payer_balance_before = self.get_account_lamports(&payer.pubkey()).await?;
-        let transaction_result = self.context
+        let transaction_result = self
+            .context
             .banks_client
             .process_transaction(transaction)
             .await
@@ -180,7 +178,6 @@ impl Testbench {
         self.process_transaction(&instructions, &payer, Some(&[&mint_keypair]))
             .await
             .map(|transaction_result| transaction_result.map(|_| mint_keypair.pubkey()))
-
     }
 
     pub async fn create_token_holding_account(
@@ -234,7 +231,7 @@ impl Testbench {
         let signer = self.clone_payer();
         self.process_transaction(&[instruction], &signer, Some(&[&signer]))
             .await
-            .map(|transaction_result| transaction_result.map(|_| () ))
+            .map(|transaction_result| transaction_result.map(|_| ()))
     }
 
     pub async fn token_balance(&mut self, token_account: &Pubkey) -> TestbenchResult<u64> {
@@ -257,17 +254,11 @@ impl Testbench {
         Ok(data.supply)
     }
 
-    pub async fn get_account_lamports(
-        &mut self,
-        account_pubkey: &Pubkey,
-    ) -> TestbenchResult<u64> {
+    pub async fn get_account_lamports(&mut self, account_pubkey: &Pubkey) -> TestbenchResult<u64> {
         Ok(self.get_account(account_pubkey).await?.lamports)
     }
 
-    pub async fn get_account_data(
-        &mut self,
-        account_pubkey: &Pubkey,
-    ) -> TestbenchResult<Vec<u8>> {
+    pub async fn get_account_data(&mut self, account_pubkey: &Pubkey) -> TestbenchResult<Vec<u8>> {
         Ok(self.get_account(account_pubkey).await?.data)
     }
 
@@ -289,10 +280,7 @@ impl Testbench {
             .map_err(|_| TestbenchError::CouldNotDeserialize)
     }
 
-    pub async fn get_mint_account(
-        &mut self,
-        account_pubkey: &Pubkey,
-    ) -> TestbenchResult<Mint> {
+    pub async fn get_mint_account(&mut self, account_pubkey: &Pubkey) -> TestbenchResult<Mint> {
         let account_data = self.get_account_data(account_pubkey).await?;
         Mint::unpack_from_slice(&account_data).map_err(|_| TestbenchError::CouldNotDeserialize)
     }

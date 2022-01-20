@@ -25,6 +25,6 @@ impl TestUser {
         testbench
             .process_transaction(&[instruction], &payer, None)
             .await
-            .map(|transaction_result| transaction_result.map(|_| Self { keypair } ))
+            .map(|transaction_result| transaction_result.map(|_| Self { keypair }))
     }
 }
