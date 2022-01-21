@@ -9,6 +9,7 @@ use serde::de::DeserializeOwned;
 use serde_json::json;
 use solana_program::borsh::try_from_slice_unchecked;
 use solana_program::pubkey::Pubkey;
+use solana_sdk::transaction::{Signature, Transaction};
 
 /// Specifies which Solana cluster will be queried by the client.
 pub enum Net {
@@ -30,7 +31,6 @@ impl Net {
 }
 
 pub type ClientResult<T> = Result<T, anyhow::Error>;
-pub type Signature = Vec<u8>;
 
 /// An async client to make rpc requests to the Solana blockchain.
 pub struct RpcClient {
@@ -135,7 +135,7 @@ impl RpcClient {
     ) -> ClientResult<Signature> {
         let config = RpcRequestAirdropConfig {
             recent_blockhash: None,
-            commitment: CommitmentLevel::Confirmed,
+            commitment: Some(CommitmentLevel::Confirmed),
         };
         let request = RpcRequest::RequestAirdrop
             .build_request_json(
@@ -150,5 +150,7 @@ impl RpcClient {
         Ok(response.result)
     }
 
-    //pub async fn send_transaction
+    pub async fn send_transaction(&mut self, transaction: &Transaction) -> ClientResult<Signature> {
+        todo!();
+    }
 }
