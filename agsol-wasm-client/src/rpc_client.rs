@@ -9,7 +9,8 @@ use serde::de::DeserializeOwned;
 use serde_json::json;
 use solana_program::borsh::try_from_slice_unchecked;
 use solana_program::pubkey::Pubkey;
-use solana_sdk::transaction::{Signature, Transaction};
+use solana_sdk::signature::Signature;
+use solana_sdk::transaction::Transaction;
 
 /// Specifies which Solana cluster will be queried by the client.
 pub enum Net {
