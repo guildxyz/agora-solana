@@ -1,10 +1,11 @@
 use super::account::{Account, EncodedAccount};
-use super::rpc_config::{Encoding, RpcConfig};
+use super::rpc_config::*;
 use super::rpc_request::RpcRequest;
 use super::rpc_response::{RpcResponse, RpcResultWithContext};
 
 use borsh::BorshDeserialize;
 use reqwest::header::CONTENT_TYPE;
+use serde::de::DeserializeOwned;
 use serde_json::json;
 use solana_program::borsh::try_from_slice_unchecked;
 use solana_program::pubkey::Pubkey;
@@ -27,6 +28,9 @@ impl Net {
         }
     }
 }
+
+pub type ClientResult<T> = Result<T, anyhow::Error>;
+pub type Signature = Vec<u8>;
 
 /// An async client to make rpc requests to the Solana blockchain.
 pub struct RpcClient {
@@ -53,35 +57,37 @@ impl RpcClient {
         Self::new_with_config(net, config)
     }
 
+    async fn send<T: DeserializeOwned, R: Into<reqwest::Body>>(
+        &mut self,
+        request: R,
+    ) -> reqwest::Result<T> {
+        self.request_id = self.request_id.wrapping_add(1);
+        let response = self
+            .client
+            .post(self.net.to_url())
+            .header(CONTENT_TYPE, "application/json")
+            .body(request)
+            .send()
+            .await?;
+
+        response.json::<T>().await
+    }
+
     /// Returns the decoded contents of a Solana account.
-    pub async fn get_account(&mut self, account_pubkey: &Pubkey) -> Result<Account, anyhow::Error> {
-        let request_json = RpcRequest::GetAccountInfo
+    pub async fn get_account(&mut self, account_pubkey: &Pubkey) -> ClientResult<Account> {
+        let request = RpcRequest::GetAccountInfo
             .build_request_json(
                 self.request_id,
                 json!([json!(account_pubkey.to_string()), json!(self.config)]),
             )
             .to_string();
-        self.request_id = self.request_id.wrapping_add(1);
-
-        let response_json = self
-            .client
-            .post(self.net.to_url())
-            .header(CONTENT_TYPE, "application/json")
-            .body(request_json)
-            .send()
-            .await?;
-
-        let response = response_json
-            .json::<RpcResponse<RpcResultWithContext<EncodedAccount>>>()
-            .await?;
+        let response: RpcResponse<RpcResultWithContext<EncodedAccount>> =
+            self.send(request).await?;
         response.result.value.decode()
     }
 
     /// Returns the raw bytes in an account's data field.
-    pub async fn get_account_data(
-        &mut self,
-        account_pubkey: &Pubkey,
-    ) -> Result<Vec<u8>, anyhow::Error> {
+    pub async fn get_account_data(&mut self, account_pubkey: &Pubkey) -> ClientResult<Vec<u8>> {
         let account = self.get_account(account_pubkey).await?;
         Ok(account.data)
     }
@@ -91,19 +97,19 @@ impl RpcClient {
     pub async fn get_and_deserialize_account_data<T: BorshDeserialize>(
         &mut self,
         account_pubkey: &Pubkey,
-    ) -> Result<T, anyhow::Error> {
+    ) -> ClientResult<T> {
         let account_data = self.get_account_data(account_pubkey).await?;
         try_from_slice_unchecked(&account_data).map_err(|e| anyhow::anyhow!(e))
     }
 
     /// Returns the owner of the account.
-    pub async fn get_owner(&mut self, account_pubkey: &Pubkey) -> Result<Pubkey, anyhow::Error> {
+    pub async fn get_owner(&mut self, account_pubkey: &Pubkey) -> ClientResult<Pubkey> {
         let account = self.get_account(account_pubkey).await?;
         Ok(account.owner)
     }
 
     /// Returns the balance (in Lamports) of the account.
-    pub async fn get_lamports(&mut self, account_pubkey: &Pubkey) -> Result<u64, anyhow::Error> {
+    pub async fn get_lamports(&mut self, account_pubkey: &Pubkey) -> ClientResult<u64> {
         let account = self.get_account(account_pubkey).await?;
         Ok(account.lamports)
     }
@@ -112,21 +118,37 @@ impl RpcClient {
     pub async fn get_minimum_balance_for_rent_exemption(
         &mut self,
         data_len: usize,
-    ) -> Result<u64, anyhow::Error> {
-        let request_json = RpcRequest::GetMinimumBalanceForRentExemption
+    ) -> ClientResult<u64> {
+        let request = RpcRequest::GetMinimumBalanceForRentExemption
             .build_request_json(self.request_id, json!([data_len]))
             .to_string();
-        self.request_id = self.request_id.wrapping_add(1);
 
-        let response_json = self
-            .client
-            .post(self.net.to_url())
-            .header(CONTENT_TYPE, "application/json")
-            .body(request_json)
-            .send()
+        let response: RpcResponse<u64> = self.send(request)
             .await?;
-
-        let response = response_json.json::<RpcResponse<u64>>().await?;
         Ok(response.result)
     }
+
+    pub async fn request_airdrop(
+        &mut self,
+        pubkey: &Pubkey,
+        lamports: u64,
+    ) -> ClientResult<Signature> {
+        let config = RpcRequestAirdropConfig {
+            recent_blockhash: None,
+            commitment: CommitmentLevel::Confirmed,
+        };
+        let request = RpcRequest::RequestAirdrop
+            .build_request_json(
+                self.request_id,
+                json!([pubkey.to_string(), lamports, config]),
+            )
+            .to_string();
+
+        let response: RpcResponse<Signature> = self.send(request)
+            .await?;
+
+        Ok(response.result)
+    }
+
+    //pub async fn send_transaction
 }
