@@ -233,8 +233,9 @@ mod test {
             .unwrap();
 
         let mut i = 0;
-        let max_loops = 100;
-        while let Ok(balance_after) = client.get_balance(&alice.pubkey()).await {
+        let max_loops = 60;
+        loop {
+            let balance_after = client.get_balance(&alice.pubkey()).await.unwrap();
             if balance_after - balance_before == airdrop_lamports {
                 break;
             }
@@ -243,5 +244,11 @@ mod test {
                 panic!("test was running for {} loops", max_loops);
             }
         }
+    }
+
+    #[tokio::test]
+    async transfer_transaction() {
+        // TODO
+        assert!(true);
     }
 }
