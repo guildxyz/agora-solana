@@ -27,6 +27,32 @@ pub enum CommitmentLevel {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct CommitmentConfig {
+    pub commitment: CommitmentLevel
+}
+
+impl CommitmentConfig {
+    pub fn processed() -> Self {
+        Self {
+            commitment: CommitmentLevel::Processed,
+        }
+    }
+
+    pub fn confirmed() -> Self {
+        Self {
+            commitment: CommitmentLevel::Confirmed,
+        }
+    }
+
+    pub fn finalized() -> Self {
+        Self {
+            commitment: CommitmentLevel::Finalized,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct RpcRequestAirdropConfig {
     pub recent_blockhash: Option<String>,
     pub commitment: Option<CommitmentLevel>,
