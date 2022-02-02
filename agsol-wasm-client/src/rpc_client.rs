@@ -228,7 +228,6 @@ mod test {
     use solana_sdk::signer::keypair::Keypair;
     use solana_sdk::signer::Signer;
     use solana_sdk::system_transaction::transfer;
-    use tokio::runtime::Handle;
 
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 

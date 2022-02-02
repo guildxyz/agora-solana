@@ -32,12 +32,14 @@ pub struct CommitmentConfig {
 }
 
 impl CommitmentConfig {
+    #[allow(unused)]
     pub fn processed() -> Self {
         Self {
             commitment: CommitmentLevel::Processed,
         }
     }
 
+    #[allow(unused)]
     pub fn confirmed() -> Self {
         Self {
             commitment: CommitmentLevel::Confirmed,
