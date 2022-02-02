@@ -183,7 +183,20 @@ impl RpcClient {
     }
 
     pub async fn send_transaction(&mut self, transaction: &Transaction) -> ClientResult<Signature> {
-        todo!();
+        let serialized = bincode::serialize(transaction)?;
+        let encoded = base64::encode(serialized);
+        let config = RpcTransactionConfig {
+            skip_preflight: true,
+            preflight_commitment: Some(CommitmentLevel::Processed),
+            encoding: Some(Encoding::Base64),
+        };
+        let request = RpcRequest::SendTransaction
+            .build_request_json(self.request_id, json!([json!(encoded), json!(config)]))
+            .to_string();
+
+        let response: RpcResponse<String> = self.send(request).await?;
+        let signature = Signature::from_str(&response.result)?;
+        Ok(signature)
     }
 }
 
@@ -192,6 +205,7 @@ mod test {
     use super::*;
     use solana_sdk::signer::keypair::Keypair;
     use solana_sdk::signer::Signer;
+    use solana_sdk::system_transaction::transfer;
     use tokio::runtime::Handle;
 
     #[rustfmt::skip]
@@ -218,25 +232,26 @@ mod test {
         119,140,213,205,174,210,108,128
     ];
 
-    #[tokio::test]
-    async fn airdrop_user() {
-        let airdrop_lamports = 10_u64;
-        let alice = Keypair::from_bytes(ALICE).unwrap();
-        let mut client = RpcClient::new(Net::Devnet);
+    const AIRDROP_AMOUNT: u64 = 5500; // tx free of 5000 lamports included
+    const TRANSFER_AMOUNT: u64 = 500;
 
-        let balance_before = client.get_balance(&alice.pubkey()).await.unwrap();
-        let latest_blockhash = client.get_latest_blockhash().await.unwrap();
-
-        client
-            .request_airdrop(&alice.pubkey(), airdrop_lamports, &latest_blockhash)
-            .await
-            .unwrap();
-
+    async fn wait_for_balance_change(
+        client: &mut RpcClient,
+        account: &Pubkey,
+        balance_before: u64,
+        expected_change: u64,
+    ) {
         let mut i = 0;
         let max_loops = 60;
         loop {
-            let balance_after = client.get_balance(&alice.pubkey()).await.unwrap();
-            if balance_after - balance_before == airdrop_lamports {
+            let balance_after = client.get_balance(account).await.unwrap();
+            // NOTE might happen that alice is airdropped only after she
+            // transferred the amount to BOB
+            if balance_after < balance_before {
+                assert_eq!(balance_before - balance_after, expected_change);
+                break;
+            } else if balance_after > balance_before {
+                assert_eq!(balance_after - balance_before, expected_change);
                 break;
             }
             i += 1;
@@ -247,8 +262,38 @@ mod test {
     }
 
     #[tokio::test]
-    async transfer_transaction() {
-        // TODO
-        assert!(true);
+    async fn airdrop_user() {
+        let alice = Keypair::from_bytes(ALICE).unwrap();
+        let mut client = RpcClient::new(Net::Devnet);
+
+        let balance_before = client.get_balance(&alice.pubkey()).await.unwrap();
+        let latest_blockhash = client.get_latest_blockhash().await.unwrap();
+
+        client
+            .request_airdrop(&alice.pubkey(), AIRDROP_AMOUNT, &latest_blockhash)
+            .await
+            .unwrap();
+
+        wait_for_balance_change(&mut client, &alice.pubkey(), balance_before, AIRDROP_AMOUNT).await;
+    }
+
+    #[tokio::test]
+    async fn transfer_transaction() {
+        let alice = Keypair::from_bytes(ALICE).unwrap();
+        let bob = Keypair::from_bytes(BOB).unwrap();
+        let mut client = RpcClient::new(Net::Devnet);
+        let balance_before_bob = client.get_balance(&bob.pubkey()).await.unwrap();
+
+        let recent_blockhash = client.get_latest_blockhash().await.unwrap();
+        let transfer_tx = transfer(&alice, &bob.pubkey(), TRANSFER_AMOUNT, recent_blockhash);
+        client.send_transaction(&transfer_tx).await.unwrap();
+
+        wait_for_balance_change(
+            &mut client,
+            &bob.pubkey(),
+            balance_before_bob,
+            TRANSFER_AMOUNT,
+        )
+        .await;
     }
 }

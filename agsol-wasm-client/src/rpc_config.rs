@@ -28,7 +28,7 @@ pub enum CommitmentLevel {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct CommitmentConfig {
-    pub commitment: CommitmentLevel
+    pub commitment: CommitmentLevel,
 }
 
 impl CommitmentConfig {
@@ -60,7 +60,7 @@ pub struct RpcRequestAirdropConfig {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct RpcRequestTransactionConfig {
+pub struct RpcTransactionConfig {
     #[serde(default)]
     pub skip_preflight: bool,
     pub preflight_commitment: Option<CommitmentLevel>,
