@@ -9,6 +9,7 @@ use serde::de::DeserializeOwned;
 use serde_json::json;
 use solana_program::borsh::try_from_slice_unchecked;
 use solana_program::pubkey::Pubkey;
+use solana_sdk::clock::{Slot, UnixTimestamp};
 use solana_sdk::hash::Hash;
 use solana_sdk::signature::Signature;
 use solana_sdk::transaction::Transaction;
@@ -147,6 +148,7 @@ impl RpcClient {
         Ok(response.result)
     }
 
+    /// Requests an airdrop of lamports to a given account.
     pub async fn request_airdrop(
         &mut self,
         pubkey: &Pubkey,
@@ -170,6 +172,7 @@ impl RpcClient {
         Ok(signature)
     }
 
+    /// Returns latest blockhash.
     pub async fn get_latest_blockhash(&mut self) -> ClientResult<Hash> {
         // TODO for some reason latest blockhash returns method not found
         // even though we are using 1.9.0 and the rpc servers are also updated
@@ -182,6 +185,7 @@ impl RpcClient {
         Ok(blockhash)
     }
 
+    /// Attempts to send a signed transaction to the ledger.
     pub async fn send_transaction(&mut self, transaction: &Transaction) -> ClientResult<Signature> {
         let serialized = bincode::serialize(transaction)?;
         let encoded = base64::encode(serialized);
@@ -198,6 +202,24 @@ impl RpcClient {
         let signature = Signature::from_str(&response.result)?;
         Ok(signature)
     }
+
+    pub async fn get_slot(&mut self) -> ClientResult<Slot> {
+        let request = RpcRequest::GetSlot
+            .build_request_json(self.request_id, json!([]))
+            .to_string();
+
+        let response: RpcResponse<Slot> = self.send(request).await?;
+        Ok(response.result)
+    }
+
+    pub async fn get_block_time(&mut self, slot: Slot) -> ClientResult<UnixTimestamp> {
+        let request = RpcRequest::GetBlockTime
+            .build_request_json(self.request_id, json!([slot]))
+            .to_string();
+
+        let response: RpcResponse<UnixTimestamp> = self.send(request).await?;
+        Ok(response.result)
+    }
 }
 
 #[cfg(test)]
@@ -207,6 +229,8 @@ mod test {
     use solana_sdk::signer::Signer;
     use solana_sdk::system_transaction::transfer;
     use tokio::runtime::Handle;
+
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     #[rustfmt::skip]
     const ALICE: &[u8] = &[
@@ -295,5 +319,21 @@ mod test {
             TRANSFER_AMOUNT,
         )
         .await;
+    }
+
+    #[tokio::test]
+    async fn block_time() {
+        let mut client = RpcClient::new(Net::Mainnet);
+        for _ in 0..10 {
+            let slot = client.get_slot().await.unwrap();
+            let block_time = client.get_block_time(slot).await.unwrap();
+            let time = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as i64;
+            let delta_time = (time - block_time) as f32;
+            assert!(delta_time.abs() < 30.0); // we are within 30 seconds
+            std::thread::sleep(Duration::from_secs(1));
+        }
     }
 }
