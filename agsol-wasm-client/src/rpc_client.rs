@@ -190,7 +190,7 @@ impl RpcClient {
         let serialized = bincode::serialize(transaction)?;
         let encoded = base64::encode(serialized);
         let config = RpcTransactionConfig {
-            skip_preflight: true,
+            skip_preflight: false,
             preflight_commitment: Some(CommitmentLevel::Processed),
             encoding: Some(Encoding::Base64),
         };
