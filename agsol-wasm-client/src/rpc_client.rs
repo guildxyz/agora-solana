@@ -256,7 +256,7 @@ mod test {
     ];
 
     const AIRDROP_AMOUNT: u64 = 5500; // tx free of 5000 lamports included
-    const TRANSFER_AMOUNT: u64 = 500;
+    const TRANSFER_AMOUNT: u64 = 250;
 
     async fn wait_for_balance_change(
         client: &mut RpcClient,
@@ -270,14 +270,17 @@ mod test {
             let balance_after = client.get_balance(account).await.unwrap();
             // NOTE might happen that alice is airdropped only after she
             // transferred the amount to BOB
-            if balance_after < balance_before {
-                assert_eq!(balance_before - balance_after, expected_change);
-                break;
-            } else if balance_after > balance_before {
-                assert_eq!(balance_after - balance_before, expected_change);
-                break;
+            match balance_after.checked_sub(balance_before) {
+                Some(0) => i += 1,
+                Some(delta) => {
+                    assert_eq!(delta, expected_change);
+                    break;
+                }
+                None => {
+                    assert_eq!(balance_before - balance_after, expected_change);
+                    break;
+                }
             }
-            i += 1;
             if i == max_loops {
                 panic!("test was running for {} loops", max_loops);
             }
@@ -285,11 +288,12 @@ mod test {
     }
 
     #[tokio::test]
-    async fn airdrop_user() {
+    async fn airdrop_and_transfer() {
         let alice = Keypair::from_bytes(ALICE).unwrap();
+        let bob = Keypair::from_bytes(BOB).unwrap();
         let mut client = RpcClient::new(Net::Devnet);
 
-        let balance_before = client.get_balance(&alice.pubkey()).await.unwrap();
+        let balance_before_airdrop_alice = client.get_balance(&alice.pubkey()).await.unwrap();
         let latest_blockhash = client.get_latest_blockhash().await.unwrap();
 
         client
@@ -297,14 +301,14 @@ mod test {
             .await
             .unwrap();
 
-        wait_for_balance_change(&mut client, &alice.pubkey(), balance_before, AIRDROP_AMOUNT).await;
-    }
+        wait_for_balance_change(
+            &mut client,
+            &alice.pubkey(),
+            balance_before_airdrop_alice,
+            AIRDROP_AMOUNT,
+        )
+        .await;
 
-    #[tokio::test]
-    async fn transfer_transaction() {
-        let alice = Keypair::from_bytes(ALICE).unwrap();
-        let bob = Keypair::from_bytes(BOB).unwrap();
-        let mut client = RpcClient::new(Net::Devnet);
         let balance_before_bob = client.get_balance(&bob.pubkey()).await.unwrap();
 
         let recent_blockhash = client.get_latest_blockhash().await.unwrap();
@@ -316,6 +320,14 @@ mod test {
             &bob.pubkey(),
             balance_before_bob,
             TRANSFER_AMOUNT,
+        )
+        .await;
+
+        wait_for_balance_change(
+            &mut client,
+            &alice.pubkey(),
+            balance_before_airdrop_alice,
+            TRANSFER_AMOUNT, // also losing the 5000 lamport fee
         )
         .await;
     }
@@ -331,7 +343,7 @@ mod test {
                 .unwrap()
                 .as_secs() as i64;
             let delta_time = (time - block_time) as f32;
-            assert!(delta_time.abs() < 30.0); // we are within 30 seconds
+            assert!(delta_time.abs() < 60.0); // we are within one minute
             std::thread::sleep(Duration::from_secs(1));
         }
     }
