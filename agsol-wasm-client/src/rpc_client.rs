@@ -187,13 +187,17 @@ impl RpcClient {
 
     /// Attempts to send a signed transaction to the ledger.
     pub async fn send_transaction(&mut self, transaction: &Transaction) -> ClientResult<Signature> {
-        let serialized = bincode::serialize(transaction)?;
-        let encoded = base64::encode(serialized);
         let config = RpcTransactionConfig {
-            skip_preflight: false,
+            skip_preflight: true,
             preflight_commitment: Some(CommitmentLevel::Processed),
             encoding: Some(Encoding::Base64),
         };
+        self.send_transaction_with_config(transaction, &config).await
+    }
+
+    pub async fn send_transaction_with_config(&mut self, transaction: &Transaction, config: &RpcTransactionConfig) -> ClientResult<Signature> {
+        let serialized = bincode::serialize(transaction)?;
+        let encoded = base64::encode(serialized);
         let request = RpcRequest::SendTransaction
             .build_request_json(self.request_id, json!([json!(encoded), json!(config)]))
             .to_string();
