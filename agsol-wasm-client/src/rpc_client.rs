@@ -228,20 +228,22 @@ impl RpcClient {
 
         match self.send::<serde_json::Value, String>(request).await {
             Ok(json_value) => {
-                if let Ok(response) = serde_json::from_value::<RpcResponse<String>>(json_value.clone()) {
+                if let Ok(response) =
+                    serde_json::from_value::<RpcResponse<String>>(json_value.clone())
+                {
                     let signature = Signature::from_str(&response.result)?;
                     Ok(signature)
                 } else if let Ok(tx_error) =
-                    serde_json::from_value::<RpcTransactionError>(json_value)
+                    serde_json::from_value::<RpcResponse<RpcTransactionError>>(json_value)
                 {
-                    debug!("{:?}", tx_error.message);
                     tx_error
+                        .result
                         .data
                         .logs
                         .iter()
                         .enumerate()
                         .for_each(|(i, log)| debug!("{} {}", i, log));
-                    bail!("failed to send transaction")
+                    bail!("{}", tx_error.result.message);
                 } else {
                     bail!("failed to parse RPC response")
                 }

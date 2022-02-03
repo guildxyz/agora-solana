@@ -5,6 +5,7 @@ use solana_sdk::transaction::TransactionError;
 pub struct RpcResponse<T> {
     pub id: u64,
     pub jsonrpc: String,
+    #[serde(alias = "error")]
     pub result: T,
 }
 
@@ -30,14 +31,14 @@ pub struct Blockhash {
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcTransactionError {
-    pub code: u64,
-    pub message: String,
+    pub code: i64,
     pub data: RpcTransactionErrorData,
+    pub message: String,
 }
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcTransactionErrorData {
-    //pub err: TransactionError,
+    pub err: TransactionError,
     pub logs: Vec<String>,
 }
