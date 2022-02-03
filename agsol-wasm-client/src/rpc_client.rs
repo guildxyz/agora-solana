@@ -314,13 +314,17 @@ mod test {
         expected_change: u64,
     ) {
         let mut i = 0;
-        let max_loops = 60;
+        let max_loops = 15;
         loop {
             let balance_after = client.get_balance(account).await.unwrap();
             // NOTE might happen that alice is airdropped only after she
             // transferred the amount to BOB
             match balance_after.checked_sub(balance_before) {
-                Some(0) => i += 1,
+                Some(0) => {
+                    std::thread::sleep(std::time::Duration::from_secs(1));
+                    i += 1;
+                    dbg!(i);
+                }
                 Some(delta) => {
                     assert_eq!(delta, expected_change);
                     break;
