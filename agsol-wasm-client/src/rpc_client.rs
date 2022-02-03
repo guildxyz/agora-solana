@@ -3,7 +3,9 @@ use super::rpc_config::*;
 use super::rpc_request::RpcRequest;
 use super::rpc_response::*;
 
+use anyhow::bail;
 use borsh::BorshDeserialize;
+use log::debug;
 use reqwest::header::CONTENT_TYPE;
 use serde::de::DeserializeOwned;
 use serde_json::json;
@@ -224,12 +226,28 @@ impl RpcClient {
             .build_request_json(self.request_id, json!([json!(encoded), json!(config)]))
             .to_string();
 
-        let response: serde_json::Value = self.send(request).await?;
-        println!("{:#?}", response);
-        //let response: RpcResponse<String> = self.send(request).await?;
-        //let signature = Signature::from_str(&response.result)?;
-        //Ok(signature)
-        Ok(Signature::default())
+        match self.send::<serde_json::Value, String>(request).await {
+            Ok(json_value) => {
+                if let Ok(response) = serde_json::from_value::<RpcResponse<String>>(json_value.clone()) {
+                    let signature = Signature::from_str(&response.result)?;
+                    Ok(signature)
+                } else if let Ok(tx_error) =
+                    serde_json::from_value::<RpcTransactionError>(json_value)
+                {
+                    debug!("{:?}", tx_error.message);
+                    tx_error
+                        .data
+                        .logs
+                        .iter()
+                        .enumerate()
+                        .for_each(|(i, log)| debug!("{} {}", i, log));
+                    bail!("failed to send transaction")
+                } else {
+                    bail!("failed to parse RPC response")
+                }
+            }
+            Err(err) => bail!(err),
+        }
     }
 
     pub async fn get_slot(&mut self) -> ClientResult<Slot> {
