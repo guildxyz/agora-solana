@@ -314,7 +314,7 @@ mod test {
         expected_change: u64,
     ) {
         let mut i = 0;
-        let max_loops = 15;
+        let max_loops = 60;
         loop {
             let balance_after = client.get_balance(account).await.unwrap();
             // NOTE might happen that alice is airdropped only after she
@@ -335,7 +335,7 @@ mod test {
                 }
             }
             if i == max_loops {
-                panic!("test was running for {} loops", max_loops);
+                panic!("test was running for {} seconds", max_loops);
             }
         }
     }
