@@ -224,9 +224,12 @@ impl RpcClient {
             .build_request_json(self.request_id, json!([json!(encoded), json!(config)]))
             .to_string();
 
-        let response: RpcResponse<String> = self.send(request).await?;
-        let signature = Signature::from_str(&response.result)?;
-        Ok(signature)
+        let response: serde_json::Value = self.send(request).await?;
+        println!("{:#?}", response);
+        //let response: RpcResponse<String> = self.send(request).await?;
+        //let signature = Signature::from_str(&response.result)?;
+        //Ok(signature)
+        Ok(Signature::default())
     }
 
     pub async fn get_slot(&mut self) -> ClientResult<Slot> {
