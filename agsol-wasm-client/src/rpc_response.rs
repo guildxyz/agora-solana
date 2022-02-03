@@ -38,6 +38,6 @@ pub struct RpcTransactionError {
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcTransactionErrorData {
-    pub err: TransactionError,
+    //pub err: TransactionError,
     pub logs: Vec<String>,
 }
