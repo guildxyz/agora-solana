@@ -115,12 +115,6 @@ impl RpcClient {
         Ok(account.owner)
     }
 
-    /// Returns the balance (in Lamports) of the account.
-    pub async fn get_lamports(&mut self, account_pubkey: &Pubkey) -> ClientResult<u64> {
-        let account = self.get_account(account_pubkey).await?;
-        Ok(account.lamports)
-    }
-
     /// Returns the balance (in lamports) of the account.
     pub async fn get_balance(&mut self, account_pubkey: &Pubkey) -> ClientResult<u64> {
         let request = RpcRequest::GetBalance
@@ -387,6 +381,8 @@ mod test {
 
     #[tokio::test]
     async fn block_time() {
+        // TODO compare results with solana_client's, once they use
+        // spl_token 3.3.0
         let mut client = RpcClient::new(Net::Mainnet);
         for _ in 0..10 {
             let slot = client.get_slot().await.unwrap();

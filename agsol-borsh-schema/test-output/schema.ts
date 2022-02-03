@@ -6,6 +6,29 @@ import { borshPublicKey } from "./extensions/publicKey";
 
 borshPublicKey();
 
+export class BTreeWrapper extends Struct {
+    map0: Map<[32], PublicKey>;
+    map1: Map<string, number | null>;
+    map2: Map<number, string>;
+};
+
+export class TestStruct extends Struct {
+    fieldA: BN;
+    fieldB: number;
+    fieldC: OtherState[] | null;
+};
+
+export class OtherState extends Struct {
+    amount: BN;
+    timestamp: BN;
+};
+
+export class TupleStruct extends Struct {
+    unnamed_0: number;
+    unnamed_1: number;
+    unnamed_2: OtherState;
+};
+
 export class RandomStruct extends Struct {
     fieldA: string;
     fieldB: [2] | null;
@@ -50,30 +73,46 @@ export class TestEnumVariantG extends Struct {
     zello: boolean;
 };
 
-export class TestStruct extends Struct {
-    fieldA: BN;
-    fieldB: number;
-    fieldC: OtherState[] | null;
-};
-
-export class OtherState extends Struct {
-    amount: BN;
-    timestamp: BN;
-};
-
-export class TupleStruct extends Struct {
-    unnamed_0: number;
-    unnamed_1: number;
-    unnamed_2: OtherState;
-};
-
-export class BTreeWrapper extends Struct {
-    map0: Map<[32], PublicKey>;
-    map1: Map<string, number | null>;
-    map2: Map<number, string>;
-};
-
 export const SCHEMA = new Map<any, any>([
+    [
+            BTreeWrapper,
+            {
+                kind: 'struct', fields: [
+			['map0', { kind: 'map', key: [32], value: 'publicKey' }],
+			['map1', { kind: 'map', key: 'string', value: { kind: 'option', type: 'u32' } }],
+			['map2', { kind: 'map', key: 'u16', value: 'string' }],
+                ],
+            },
+    ],
+    [
+            TestStruct,
+            {
+                kind: 'struct', fields: [
+			['fieldA', 'u64'],
+			['fieldB', 'u8'],
+			['fieldC', { kind: 'option', type: [OtherState] }],
+                ],
+            },
+    ],
+    [
+            OtherState,
+            {
+                kind: 'struct', fields: [
+			['amount', 'u64'],
+			['timestamp', 'u64'],
+                ],
+            },
+    ],
+    [
+            TupleStruct,
+            {
+                kind: 'struct', fields: [
+			['unnamed_0', 'u8'],
+			['unnamed_1', 'u32'],
+			['unnamed_2', OtherState],
+                ],
+            },
+    ],
     [
             RandomStruct,
             {
@@ -151,45 +190,6 @@ export const SCHEMA = new Map<any, any>([
 			['bello', ['publicKey', 3]],
 			['yello', 'u16'],
 			['zello', 'u8'],
-                ],
-            },
-    ],
-    [
-            TestStruct,
-            {
-                kind: 'struct', fields: [
-			['fieldA', 'u64'],
-			['fieldB', 'u8'],
-			['fieldC', { kind: 'option', type: [OtherState] }],
-                ],
-            },
-    ],
-    [
-            OtherState,
-            {
-                kind: 'struct', fields: [
-			['amount', 'u64'],
-			['timestamp', 'u64'],
-                ],
-            },
-    ],
-    [
-            TupleStruct,
-            {
-                kind: 'struct', fields: [
-			['unnamed_0', 'u8'],
-			['unnamed_1', 'u32'],
-			['unnamed_2', OtherState],
-                ],
-            },
-    ],
-    [
-            BTreeWrapper,
-            {
-                kind: 'struct', fields: [
-			['map0', { kind: 'map', key: [32], value: 'publicKey' }],
-			['map1', { kind: 'map', key: 'string', value: { kind: 'option', type: 'u32' } }],
-			['map2', { kind: 'map', key: 'u16', value: 'string' }],
                 ],
             },
     ],
