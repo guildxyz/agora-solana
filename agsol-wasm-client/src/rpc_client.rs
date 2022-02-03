@@ -190,13 +190,17 @@ impl RpcClient {
     ///
     /// It is a bit faster, but no logs or confirmation is returned because the
     /// transaction is not simulated.
-    pub async fn send_transaction_unchecked(&mut self, transaction: &Transaction) -> ClientResult<Signature> {
+    pub async fn send_transaction_unchecked(
+        &mut self,
+        transaction: &Transaction,
+    ) -> ClientResult<Signature> {
         let config = RpcTransactionConfig {
             skip_preflight: true,
             preflight_commitment: Some(CommitmentLevel::Processed),
             encoding: Some(Encoding::Base64),
         };
-        self.send_transaction_with_config(transaction, &config).await
+        self.send_transaction_with_config(transaction, &config)
+            .await
     }
 
     pub async fn send_transaction(&mut self, transaction: &Transaction) -> ClientResult<Signature> {
@@ -205,10 +209,15 @@ impl RpcClient {
             preflight_commitment: Some(CommitmentLevel::Confirmed),
             encoding: Some(Encoding::Base64),
         };
-        self.send_transaction_with_config(transaction, &config).await
+        self.send_transaction_with_config(transaction, &config)
+            .await
     }
 
-    pub async fn send_transaction_with_config(&mut self, transaction: &Transaction, config: &RpcTransactionConfig) -> ClientResult<Signature> {
+    pub async fn send_transaction_with_config(
+        &mut self,
+        transaction: &Transaction,
+        config: &RpcTransactionConfig,
+    ) -> ClientResult<Signature> {
         let serialized = bincode::serialize(transaction)?;
         let encoded = base64::encode(serialized);
         let request = RpcRequest::SendTransaction
