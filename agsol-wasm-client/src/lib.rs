@@ -31,16 +31,13 @@
 //! `wasm_instruction!()` macro that can be used for quickly exposing a Solana
 //! [`Instruction`](https://docs.rs/solana-program/latest/solana_program/instruction/struct.Instruction.html)
 //! factory to Wasm.
-mod account;
+pub mod account;
 mod rpc_client;
-mod rpc_config;
-mod rpc_request;
+pub mod rpc_config;
+pub mod rpc_request;
 mod rpc_response;
 
-pub use account::Account;
-pub use rpc_client::{Net, RpcClient};
-pub use rpc_config::{Encoding, RpcConfig};
-pub use rpc_request::RpcRequest;
+pub use rpc_client::*;
 
 #[cfg(any(test, feature = "wasm-factory"))]
 #[allow(unused_imports)]

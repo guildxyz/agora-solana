@@ -185,11 +185,24 @@ impl RpcClient {
         Ok(blockhash)
     }
 
-    /// Attempts to send a signed transaction to the ledger.
-    pub async fn send_transaction(&mut self, transaction: &Transaction) -> ClientResult<Signature> {
+    /// Attempts to send a signed transaction to the ledger without simulating
+    /// it first.
+    ///
+    /// It is a bit faster, but no logs or confirmation is returned because the
+    /// transaction is not simulated.
+    pub async fn send_transaction_unchecked(&mut self, transaction: &Transaction) -> ClientResult<Signature> {
         let config = RpcTransactionConfig {
             skip_preflight: true,
             preflight_commitment: Some(CommitmentLevel::Processed),
+            encoding: Some(Encoding::Base64),
+        };
+        self.send_transaction_with_config(transaction, &config).await
+    }
+
+    pub async fn send_transaction(&mut self, transaction: &Transaction) -> ClientResult<Signature> {
+        let config = RpcTransactionConfig {
+            skip_preflight: false,
+            preflight_commitment: Some(CommitmentLevel::Confirmed),
             encoding: Some(Encoding::Base64),
         };
         self.send_transaction_with_config(transaction, &config).await
