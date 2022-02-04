@@ -60,8 +60,13 @@ impl RpcClient {
     pub fn new(net: Net) -> Self {
         let config = RpcConfig {
             encoding: Some(Encoding::JsonParsed),
+            commitment: Some(CommitmentLevel::Confirmed),
         };
         Self::new_with_config(net, config)
+    }
+
+    pub fn set_commitment(&mut self, commitment: Option<CommitmentLevel>) {
+        self.config.commitment = commitment;
     }
 
     async fn send<T: DeserializeOwned, R: Into<reqwest::Body>>(
@@ -339,6 +344,7 @@ mod test {
         let alice = Keypair::from_bytes(ALICE).unwrap();
         let bob = Keypair::from_bytes(BOB).unwrap();
         let mut client = RpcClient::new(Net::Devnet);
+        client.set_commitment(Some(CommitmentLevel::Finalized));
 
         let balance_before_airdrop_alice = client.get_balance(&alice.pubkey()).await.unwrap();
         let latest_blockhash = client.get_latest_blockhash().await.unwrap();
@@ -395,5 +401,17 @@ mod test {
             assert!(delta_time.abs() < 60.0); // we are within one minute
             std::thread::sleep(Duration::from_secs(1));
         }
+    }
+
+    #[test]
+    fn commitment_change() {
+        let config = RpcConfig {
+            encoding: Some(Encoding::JsonParsed),
+            commitment: None,
+        };
+        let mut client = RpcClient::new_with_config(Net::Mainnet, config);
+        assert!(client.config.commitment.is_none());
+        client.set_commitment(Some(CommitmentLevel::Processed));
+        assert_eq!(client.config.commitment, Some(CommitmentLevel::Processed));
     }
 }

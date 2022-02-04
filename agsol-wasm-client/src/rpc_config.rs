@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct RpcConfig {
     pub encoding: Option<Encoding>,
+    pub commitment: Option<CommitmentLevel>,
 }
 
 /// Required parameter in the RPC request that specifies the encoding of the
@@ -17,7 +18,7 @@ pub enum Encoding {
     JsonParsed,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum CommitmentLevel {
     Processed,
