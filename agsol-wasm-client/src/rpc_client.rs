@@ -90,7 +90,7 @@ impl RpcClient {
         let request = RpcRequest::GetAccountInfo
             .build_request_json(
                 self.request_id,
-                json!([json!(account_pubkey.to_string()), json!(self.config)]),
+                json!([account_pubkey.to_string(), self.config]),
             )
             .to_string();
         let response: RpcResponse<RpcResultWithContext<EncodedAccount>> =
@@ -125,10 +125,7 @@ impl RpcClient {
         let request = RpcRequest::GetBalance
             .build_request_json(
                 self.request_id,
-                json!([
-                    json!(account_pubkey.to_string()),
-                    json!(CommitmentConfig::finalized())
-                ]),
+                json!([account_pubkey.to_string(), self.config,]),
             )
             .to_string();
 
@@ -158,7 +155,7 @@ impl RpcClient {
     ) -> ClientResult<Signature> {
         let config = RpcRequestAirdropConfig {
             recent_blockhash: Some(recent_blockhash.to_string()),
-            commitment: Some(CommitmentLevel::Finalized),
+            commitment: self.config.commitment.clone(),
         };
         let request = RpcRequest::RequestAirdrop
             .build_request_json(
@@ -207,7 +204,7 @@ impl RpcClient {
     pub async fn send_transaction(&mut self, transaction: &Transaction) -> ClientResult<Signature> {
         let config = RpcTransactionConfig {
             skip_preflight: false,
-            preflight_commitment: Some(CommitmentLevel::Confirmed),
+            preflight_commitment: self.config.commitment.clone(),
             encoding: Some(Encoding::Base64),
         };
         self.send_transaction_with_config(transaction, &config)
@@ -222,7 +219,7 @@ impl RpcClient {
         let serialized = bincode::serialize(transaction)?;
         let encoded = base64::encode(serialized);
         let request = RpcRequest::SendTransaction
-            .build_request_json(self.request_id, json!([json!(encoded), json!(config)]))
+            .build_request_json(self.request_id, json!([encoded, config]))
             .to_string();
 
         match self.send::<serde_json::Value, String>(request).await {
@@ -344,7 +341,6 @@ mod test {
         let alice = Keypair::from_bytes(ALICE).unwrap();
         let bob = Keypair::from_bytes(BOB).unwrap();
         let mut client = RpcClient::new(Net::Devnet);
-        client.set_commitment(Some(CommitmentLevel::Finalized));
 
         let balance_before_airdrop_alice = client.get_balance(&alice.pubkey()).await.unwrap();
         let latest_blockhash = client.get_latest_blockhash().await.unwrap();
