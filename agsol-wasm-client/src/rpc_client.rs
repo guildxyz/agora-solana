@@ -399,6 +399,23 @@ mod test {
         }
     }
 
+    #[tokio::test]
+    async fn get_spl_token_program() {
+        let mut client = RpcClient::new(Net::Mainnet);
+        client.set_commitment(Some(CommitmentLevel::Processed));
+        let pubkey_bytes = bs58::decode("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
+            .into_vec()
+            .unwrap();
+        let token_program_id = Pubkey::new(&pubkey_bytes);
+
+        let account = client.get_account(&token_program_id).await.unwrap();
+        assert_eq!(
+            account.owner.to_string(),
+            "BPFLoader2111111111111111111111111111111111"
+        );
+        assert!(account.executable);
+    }
+
     #[test]
     fn commitment_change() {
         let config = RpcConfig {
