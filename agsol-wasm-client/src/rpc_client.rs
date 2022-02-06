@@ -175,7 +175,7 @@ impl RpcClient {
         // TODO for some reason latest blockhash returns method not found
         // even though we are using 1.9.0 and the rpc servers are also updated
         let request = RpcRequest::GetRecentBlockhash
-            .build_request_json(self.request_id, json!([]))
+            .build_request_json(self.request_id, json!([self.config]))
             .to_string();
 
         let response: RpcResponse<RpcResultWithContext<Blockhash>> = self.send(request).await?;
@@ -250,7 +250,7 @@ impl RpcClient {
 
     pub async fn get_slot(&mut self) -> ClientResult<Slot> {
         let request = RpcRequest::GetSlot
-            .build_request_json(self.request_id, json!([]))
+            .build_request_json(self.request_id, json!([self.config]))
             .to_string();
 
         let response: RpcResponse<Slot> = self.send(request).await?;
