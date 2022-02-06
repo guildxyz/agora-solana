@@ -60,8 +60,13 @@ impl RpcClient {
     pub fn new(net: Net) -> Self {
         let config = RpcConfig {
             encoding: Some(Encoding::JsonParsed),
+            commitment: Some(CommitmentLevel::Confirmed),
         };
         Self::new_with_config(net, config)
+    }
+
+    pub fn set_commitment(&mut self, commitment: Option<CommitmentLevel>) {
+        self.config.commitment = commitment;
     }
 
     async fn send<T: DeserializeOwned, R: Into<reqwest::Body>>(
@@ -85,7 +90,7 @@ impl RpcClient {
         let request = RpcRequest::GetAccountInfo
             .build_request_json(
                 self.request_id,
-                json!([json!(account_pubkey.to_string()), json!(self.config)]),
+                json!([account_pubkey.to_string(), self.config]),
             )
             .to_string();
         let response: RpcResponse<RpcResultWithContext<EncodedAccount>> =
@@ -120,10 +125,7 @@ impl RpcClient {
         let request = RpcRequest::GetBalance
             .build_request_json(
                 self.request_id,
-                json!([
-                    json!(account_pubkey.to_string()),
-                    json!(CommitmentConfig::finalized())
-                ]),
+                json!([account_pubkey.to_string(), self.config,]),
             )
             .to_string();
 
@@ -153,7 +155,7 @@ impl RpcClient {
     ) -> ClientResult<Signature> {
         let config = RpcRequestAirdropConfig {
             recent_blockhash: Some(recent_blockhash.to_string()),
-            commitment: Some(CommitmentLevel::Finalized),
+            commitment: self.config.commitment.clone(),
         };
         let request = RpcRequest::RequestAirdrop
             .build_request_json(
@@ -202,7 +204,7 @@ impl RpcClient {
     pub async fn send_transaction(&mut self, transaction: &Transaction) -> ClientResult<Signature> {
         let config = RpcTransactionConfig {
             skip_preflight: false,
-            preflight_commitment: Some(CommitmentLevel::Confirmed),
+            preflight_commitment: self.config.commitment.clone(),
             encoding: Some(Encoding::Base64),
         };
         self.send_transaction_with_config(transaction, &config)
@@ -217,7 +219,7 @@ impl RpcClient {
         let serialized = bincode::serialize(transaction)?;
         let encoded = base64::encode(serialized);
         let request = RpcRequest::SendTransaction
-            .build_request_json(self.request_id, json!([json!(encoded), json!(config)]))
+            .build_request_json(self.request_id, json!([encoded, config]))
             .to_string();
 
         match self.send::<serde_json::Value, String>(request).await {
@@ -395,5 +397,34 @@ mod test {
             assert!(delta_time.abs() < 60.0); // we are within one minute
             std::thread::sleep(Duration::from_secs(1));
         }
+    }
+
+    #[tokio::test]
+    async fn get_spl_token_program() {
+        let mut client = RpcClient::new(Net::Mainnet);
+        client.set_commitment(Some(CommitmentLevel::Processed));
+        let pubkey_bytes = bs58::decode("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
+            .into_vec()
+            .unwrap();
+        let token_program_id = Pubkey::new(&pubkey_bytes);
+
+        let account = client.get_account(&token_program_id).await.unwrap();
+        assert_eq!(
+            account.owner.to_string(),
+            "BPFLoader2111111111111111111111111111111111"
+        );
+        assert!(account.executable);
+    }
+
+    #[test]
+    fn commitment_change() {
+        let config = RpcConfig {
+            encoding: Some(Encoding::JsonParsed),
+            commitment: None,
+        };
+        let mut client = RpcClient::new_with_config(Net::Mainnet, config);
+        assert!(client.config.commitment.is_none());
+        client.set_commitment(Some(CommitmentLevel::Processed));
+        assert_eq!(client.config.commitment, Some(CommitmentLevel::Processed));
     }
 }
