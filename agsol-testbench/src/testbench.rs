@@ -116,9 +116,8 @@ impl Testbench {
         self.warp_n_slots(2).await
     }
 
-    pub async fn get_latest_blockhash(&mut self) -> TestbenchResult<Hash>{
-        self
-            .context
+    pub async fn get_latest_blockhash(&mut self) -> TestbenchResult<Hash> {
+        self.context
             .banks_client
             .get_latest_blockhash()
             .await
@@ -243,12 +242,16 @@ impl Testbench {
     }
 
     pub async fn token_balance(&mut self, token_account: &Pubkey) -> TestbenchResult<u64> {
-        let token_data = self.get_and_deserialize_packed_account_data::<TokenAccount>(token_account).await?;
+        let token_data = self
+            .get_and_deserialize_packed_account_data::<TokenAccount>(token_account)
+            .await?;
         Ok(token_data.amount)
     }
 
     pub async fn total_supply(&mut self, mint_account: &Pubkey) -> TestbenchResult<u64> {
-        let mint_data = self.get_and_deserialize_packed_account_data::<Mint>(mint_account).await?;
+        let mint_data = self
+            .get_and_deserialize_packed_account_data::<Mint>(mint_account)
+            .await?;
         Ok(mint_data.supply)
     }
 
@@ -282,18 +285,19 @@ impl Testbench {
         account_pubkey: &Pubkey,
     ) -> TestbenchResult<T> {
         let account_data = self.get_account_data(account_pubkey).await?;
-        T::unpack_from_slice(&account_data)
-            .map_err(|_| TestbenchError::CouldNotDeserialize)
+        T::unpack_from_slice(&account_data).map_err(|_| TestbenchError::CouldNotDeserialize)
     }
 
     pub async fn get_token_account(
         &mut self,
         account_pubkey: &Pubkey,
     ) -> TestbenchResult<TokenAccount> {
-        self.get_and_deserialize_packed_account_data::<TokenAccount>(account_pubkey).await
+        self.get_and_deserialize_packed_account_data::<TokenAccount>(account_pubkey)
+            .await
     }
 
     pub async fn get_mint_account(&mut self, account_pubkey: &Pubkey) -> TestbenchResult<Mint> {
-        self.get_and_deserialize_packed_account_data::<Mint>(account_pubkey).await
+        self.get_and_deserialize_packed_account_data::<Mint>(account_pubkey)
+            .await
     }
 }
