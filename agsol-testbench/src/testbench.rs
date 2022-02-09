@@ -2,6 +2,7 @@ use crate::{TestbenchError, TestbenchProgram};
 use borsh::BorshDeserialize;
 use solana_program::borsh::try_from_slice_unchecked;
 use solana_program::clock::UnixTimestamp;
+use solana_program::hash::Hash;
 use solana_program::program_pack::Pack;
 use solana_program::pubkey::Pubkey;
 use solana_program::rent::Rent;
@@ -65,7 +66,7 @@ impl Testbench {
         self.client()
             .get_account(*account_pubkey)
             .await
-            .map_err(|_| TestbenchError::AccountNotFound) // result
+            .map_err(|_| TestbenchError::SolanaInternalError)
     }
 
     // TODO make this nicer?
@@ -115,18 +116,22 @@ impl Testbench {
         self.warp_n_slots(2).await
     }
 
+    pub async fn get_latest_blockhash(&mut self) -> TestbenchResult<Hash>{
+        self
+            .context
+            .banks_client
+            .get_latest_blockhash()
+            .await
+            .map_err(|_| TestbenchError::BlockhashError)
+    }
+
     pub async fn process_transaction(
         &mut self,
         instructions: &[Instruction],
         payer: &Keypair,
         signers: Option<&[&Keypair]>,
     ) -> TestbenchTransactionResult<i64> {
-        let latest_blockhash = self
-            .context
-            .banks_client
-            .get_latest_blockhash()
-            .await
-            .map_err(|_| TestbenchError::BlockhashError)?;
+        let latest_blockhash = self.get_latest_blockhash().await?;
 
         let mut transaction = Transaction::new_with_payer(instructions, Some(&payer.pubkey()));
         let mut all_signers = vec![payer];
@@ -238,23 +243,13 @@ impl Testbench {
     }
 
     pub async fn token_balance(&mut self, token_account: &Pubkey) -> TestbenchResult<u64> {
-        let data: TokenAccount = self
-            .client()
-            .get_packed_account_data(*token_account)
-            .await
-            .map_err(|_| TestbenchError::AccountNotFound)?;
-
-        Ok(data.amount)
+        let token_data = self.get_and_deserialize_packed_account_data::<TokenAccount>(token_account).await?;
+        Ok(token_data.amount)
     }
 
     pub async fn total_supply(&mut self, mint_account: &Pubkey) -> TestbenchResult<u64> {
-        let data: Mint = self
-            .client()
-            .get_packed_account_data(*mint_account)
-            .await
-            .map_err(|_| TestbenchError::AccountNotFound)?;
-
-        Ok(data.supply)
+        let mint_data = self.get_and_deserialize_packed_account_data::<Mint>(mint_account).await?;
+        Ok(mint_data.supply)
     }
 
     pub async fn get_account_lamports(&mut self, account_pubkey: &Pubkey) -> TestbenchResult<u64> {
@@ -282,17 +277,23 @@ impl Testbench {
             .map_err(|_| TestbenchError::CouldNotDeserialize)
     }
 
+    pub async fn get_and_deserialize_packed_account_data<T: Pack>(
+        &mut self,
+        account_pubkey: &Pubkey,
+    ) -> TestbenchResult<T> {
+        let account_data = self.get_account_data(account_pubkey).await?;
+        T::unpack_from_slice(&account_data)
+            .map_err(|_| TestbenchError::CouldNotDeserialize)
+    }
+
     pub async fn get_token_account(
         &mut self,
         account_pubkey: &Pubkey,
     ) -> TestbenchResult<TokenAccount> {
-        let account_data = self.get_account_data(account_pubkey).await?;
-        TokenAccount::unpack_from_slice(&account_data)
-            .map_err(|_| TestbenchError::CouldNotDeserialize)
+        self.get_and_deserialize_packed_account_data::<TokenAccount>(account_pubkey).await
     }
 
     pub async fn get_mint_account(&mut self, account_pubkey: &Pubkey) -> TestbenchResult<Mint> {
-        let account_data = self.get_account_data(account_pubkey).await?;
-        Mint::unpack_from_slice(&account_data).map_err(|_| TestbenchError::CouldNotDeserialize)
+        self.get_and_deserialize_packed_account_data::<Mint>(account_pubkey).await
     }
 }
