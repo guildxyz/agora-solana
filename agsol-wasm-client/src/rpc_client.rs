@@ -19,6 +19,7 @@ use solana_sdk::transaction::Transaction;
 use std::str::FromStr;
 
 /// Specifies which Solana cluster will be queried by the client.
+#[derive(Clone, Copy, Debug)]
 pub enum Net {
     Localhost,
     Testnet,
