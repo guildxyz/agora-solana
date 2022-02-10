@@ -1,15 +1,21 @@
+use crate::rpc_config::Encoding;
+
+use anyhow::bail;
+use borsh::BorshDeserialize;
+use serde::de::DeserializeOwned;
 use serde::Deserialize;
-use solana_program::pubkey::Pubkey;
+use solana_program::borsh::try_from_slice_unchecked;
 
 /// The (partial) contents of a Solana account.
-#[derive(Clone, Debug)]
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct Account {
     /// Account balance in Lamports.
     pub lamports: u64,
     /// Serialized account data.
-    pub data: Vec<u8>,
-    /// The owner of the account.
-    pub owner: Pubkey,
+    pub data: AccountData,
+    /// The bs58-encoded pubkey of the account owner.
+    pub owner: String,
     /// Is the program executable?
     pub executable: bool,
     /// The epoch at which this account will next owe rent.
@@ -17,31 +23,41 @@ pub struct Account {
 }
 
 #[derive(Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct EncodedAccount {
-    lamports: u64,
-    data: [String; 2],
-    owner: String,
-    executable: bool,
-    rent_epoch: u64,
+#[serde(untagged)]
+pub enum AccountData {
+    Encoded(String, Encoding),
+    JsonParsed(ParsedAccount),
 }
 
-impl EncodedAccount {
-    pub fn decode(self) -> Result<Account, anyhow::Error> {
-        let [data_string, encoding] = self.data;
-        let data = match encoding.as_str() {
-            "base64" => base64::decode(data_string)?,
-            _ => return Err(anyhow::anyhow!("encoding {} is not implemented", encoding)),
-        };
-        let pubkey_bytes = bs58::decode(&self.owner).into_vec()?;
-        let owner = Pubkey::new(&pubkey_bytes);
-
-        Ok(Account {
-            lamports: self.lamports,
-            data,
-            owner,
-            executable: self.executable,
-            rent_epoch: self.rent_epoch,
-        })
+impl AccountData {
+    pub fn parse_into_borsh<T: BorshDeserialize>(self) -> Result<T, anyhow::Error> {
+        match self {
+            Self::Encoded(data_string, encoding) => {
+                let decoded = match encoding {
+                    Encoding::Base64 => base64::decode(data_string)?,
+                    _ => {
+                        bail!("encoding {:?} is not implemented", encoding)
+                    }
+                };
+                try_from_slice_unchecked::<T>(&decoded).map_err(|e| anyhow::anyhow!(e))
+            }
+            _ => bail!("cannot borsh-deserialize data"),
+        }
     }
+
+    pub fn parse_into_json<T: DeserializeOwned>(self) -> Result<T, anyhow::Error> {
+        match self {
+            Self::JsonParsed(account) => {
+                serde_json::from_value(dbg!(account.parsed).clone()).map_err(|e| anyhow::anyhow!(e))
+            }
+            _ => bail!("cannot json-deserialize data"),
+        }
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ParsedAccount {
+    pub parsed: serde_json::Value,
+    pub program: String,
+    pub space: u64,
 }

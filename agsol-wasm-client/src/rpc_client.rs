@@ -1,4 +1,4 @@
-use super::account::{Account, EncodedAccount};
+use super::account::Account;
 use super::rpc_config::*;
 use super::rpc_request::RpcRequest;
 use super::rpc_response::*;
@@ -9,7 +9,6 @@ use log::debug;
 use reqwest::header::CONTENT_TYPE;
 use serde::de::DeserializeOwned;
 use serde_json::json;
-use solana_program::borsh::try_from_slice_unchecked;
 use solana_program::pubkey::Pubkey;
 use solana_sdk::clock::{Slot, UnixTimestamp};
 use solana_sdk::hash::Hash;
@@ -94,31 +93,35 @@ impl RpcClient {
                 json!([account_pubkey.to_string(), self.config]),
             )
             .to_string();
-        let response: RpcResponse<RpcResultWithContext<EncodedAccount>> =
-            self.send(request).await?;
-        response.result.value.decode()
-    }
-
-    /// Returns the raw bytes in an account's data field.
-    pub async fn get_account_data(&mut self, account_pubkey: &Pubkey) -> ClientResult<Vec<u8>> {
-        let account = self.get_account(account_pubkey).await?;
-        Ok(account.data)
+        let response: RpcResponse<RpcResultWithContext<Account>> = self.send(request).await?;
+        Ok(response.result.value)
     }
 
     /// Attempts to deserialize the contents of an account's data field into a
-    /// given type.
+    /// given type using the Borsh deserialization framework.
     pub async fn get_and_deserialize_account_data<T: BorshDeserialize>(
         &mut self,
         account_pubkey: &Pubkey,
     ) -> ClientResult<T> {
-        let account_data = self.get_account_data(account_pubkey).await?;
-        try_from_slice_unchecked(&account_data).map_err(|e| anyhow::anyhow!(e))
+        let account = self.get_account(account_pubkey).await?;
+        account.data.parse_into_borsh::<T>()
+    }
+
+    /// Attempts to deserialize the contents of an account's data field into a
+    /// given type using the Json deserialization framework.
+    pub async fn get_and_deserialize_parsed_account_data<T: DeserializeOwned>(
+        &mut self,
+        account_pubkey: &Pubkey,
+    ) -> ClientResult<T> {
+        let account = self.get_account(account_pubkey).await?;
+        account.data.parse_into_json::<T>()
     }
 
     /// Returns the owner of the account.
     pub async fn get_owner(&mut self, account_pubkey: &Pubkey) -> ClientResult<Pubkey> {
         let account = self.get_account(account_pubkey).await?;
-        Ok(account.owner)
+        let pubkey_bytes = bs58::decode(account.owner).into_vec()?;
+        Ok(Pubkey::new(&pubkey_bytes))
     }
 
     /// Returns the balance (in lamports) of the account.
