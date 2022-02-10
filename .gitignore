@@ -4,3 +4,6 @@ Cargo.lock
 node_modules/
 package-lock.json
 test-data/
+
+# Mac
+**/.DS_Store

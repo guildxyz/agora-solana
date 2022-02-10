@@ -10,4 +10,6 @@ pub enum TestbenchError {
     CouldNotDeserialize,
     #[error("Could not fetch latest blockhash")]
     BlockhashError,
+    #[error("Solana internal error")]
+    SolanaInternalError,
 }
