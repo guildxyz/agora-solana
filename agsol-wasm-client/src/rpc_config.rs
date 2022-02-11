@@ -10,7 +10,7 @@ pub struct RpcConfig {
 
 /// Required parameter in the RPC request that specifies the encoding of the
 /// RPC data.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum Encoding {
     Base58,

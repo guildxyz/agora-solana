@@ -1,4 +1,4 @@
-use super::account::{Account, EncodedAccount};
+use super::account::Account;
 use super::rpc_config::*;
 use super::rpc_request::RpcRequest;
 use super::rpc_response::*;
@@ -9,7 +9,6 @@ use log::debug;
 use reqwest::header::CONTENT_TYPE;
 use serde::de::DeserializeOwned;
 use serde_json::json;
-use solana_program::borsh::try_from_slice_unchecked;
 use solana_program::pubkey::Pubkey;
 use solana_sdk::clock::{Slot, UnixTimestamp};
 use solana_sdk::hash::Hash;
@@ -94,31 +93,38 @@ impl RpcClient {
                 json!([account_pubkey.to_string(), self.config]),
             )
             .to_string();
-        let response: RpcResponse<RpcResultWithContext<EncodedAccount>> =
-            self.send(request).await?;
-        response.result.value.decode()
-    }
-
-    /// Returns the raw bytes in an account's data field.
-    pub async fn get_account_data(&mut self, account_pubkey: &Pubkey) -> ClientResult<Vec<u8>> {
-        let account = self.get_account(account_pubkey).await?;
-        Ok(account.data)
+        let response: RpcResponse<RpcResultWithContext<Account>> = self.send(request).await?;
+        Ok(response.result.value)
+        //let response: serde_json::Value = self.send(request).await?;
+        //println!("{:#?}", response);
+        //todo!();
     }
 
     /// Attempts to deserialize the contents of an account's data field into a
-    /// given type.
+    /// given type using the Borsh deserialization framework.
     pub async fn get_and_deserialize_account_data<T: BorshDeserialize>(
         &mut self,
         account_pubkey: &Pubkey,
     ) -> ClientResult<T> {
-        let account_data = self.get_account_data(account_pubkey).await?;
-        try_from_slice_unchecked(&account_data).map_err(|e| anyhow::anyhow!(e))
+        let account = self.get_account(account_pubkey).await?;
+        account.data.parse_into_borsh::<T>()
+    }
+
+    /// Attempts to deserialize the contents of an account's data field into a
+    /// given type using the Json deserialization framework.
+    pub async fn get_and_deserialize_parsed_account_data<T: DeserializeOwned>(
+        &mut self,
+        account_pubkey: &Pubkey,
+    ) -> ClientResult<T> {
+        let account = self.get_account(account_pubkey).await?;
+        account.data.parse_into_json::<T>()
     }
 
     /// Returns the owner of the account.
     pub async fn get_owner(&mut self, account_pubkey: &Pubkey) -> ClientResult<Pubkey> {
         let account = self.get_account(account_pubkey).await?;
-        Ok(account.owner)
+        let pubkey_bytes = bs58::decode(account.owner).into_vec()?;
+        Ok(Pubkey::new(&pubkey_bytes))
     }
 
     /// Returns the balance (in lamports) of the account.
@@ -271,6 +277,7 @@ impl RpcClient {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::account::{ProgramAccount, TokenAccount};
     use solana_sdk::signer::keypair::Keypair;
     use solana_sdk::signer::Signer;
     use solana_sdk::system_transaction::transfer;
@@ -410,10 +417,7 @@ mod test {
         let token_program_id = Pubkey::new(&pubkey_bytes);
 
         let account = client.get_account(&token_program_id).await.unwrap();
-        assert_eq!(
-            account.owner.to_string(),
-            "BPFLoader2111111111111111111111111111111111"
-        );
+        assert_eq!(account.owner, "BPFLoader2111111111111111111111111111111111");
         assert!(account.executable);
     }
 
@@ -427,5 +431,90 @@ mod test {
         assert!(client.config.commitment.is_none());
         client.set_commitment(Some(CommitmentLevel::Processed));
         assert_eq!(client.config.commitment, Some(CommitmentLevel::Processed));
+    }
+
+    #[tokio::test]
+    async fn mint_and_token_account() {
+        let mut client = RpcClient::new(Net::Mainnet);
+        // get NFT mint account from gold.xyz "teletubbies" auction
+        let mint_pubkey = Pubkey::new(
+            &bs58::decode("B2Kdr5MCJLxJZU1Ek91c6cAkxe1FgFTwEXG6y7cQ9gU7")
+                .into_vec()
+                .unwrap(),
+        );
+        let mint = client
+            .get_and_deserialize_parsed_account_data::<TokenAccount>(&mint_pubkey)
+            .await
+            .unwrap();
+        let mint_info = if let TokenAccount::Mint(mint_info) = mint {
+            mint_info
+        } else {
+            panic!("should be mint account");
+        };
+        assert_eq!(mint_info.decimals, 0);
+        assert_eq!(mint_info.supply.parse::<u8>().unwrap(), 1);
+        // get NFT token account from gold.xyz "teletubbies" auction
+        let token_account_pubkey = Pubkey::new(
+            &bs58::decode("6xrSzvKGBux6FHZdRuKwrWwHxCcwdgfTVFVUaiPbsmSR")
+                .into_vec()
+                .unwrap(),
+        );
+        let token_account = client
+            .get_and_deserialize_parsed_account_data::<TokenAccount>(&token_account_pubkey)
+            .await
+            .unwrap();
+
+        let token_acc_info = if let TokenAccount::Account(account_info) = token_account {
+            account_info
+        } else {
+            panic!("should be token account");
+        };
+        assert_eq!(token_acc_info.mint, mint_pubkey.to_string())
+    }
+
+    #[tokio::test]
+    async fn deserialize_go1d_account() {
+        let mut client = RpcClient::new(Net::Mainnet);
+        let gold_pubkey = Pubkey::new(
+            &bs58::decode("go1dcKcvafq8SDwmBKo6t2NVzyhvTEZJkMwnnfae99U")
+                .into_vec()
+                .unwrap(),
+        );
+
+        let gold_acc = client
+            .get_and_deserialize_parsed_account_data::<ProgramAccount>(&gold_pubkey)
+            .await
+            .unwrap();
+
+        if let ProgramAccount::Program(_program) = gold_acc {
+        } else {
+            panic!("should be a program account");
+        }
+    }
+
+    #[derive(BorshDeserialize)]
+    struct GoldContractBankState {
+        admin: Pubkey,
+        wd_auth: Pubkey,
+    }
+
+    #[tokio::test]
+    async fn get_borsh_serialized_account_data() {
+        let mut client = RpcClient::new(Net::Mainnet);
+        let contract_pubkey = Pubkey::new(
+            &bs58::decode("21d8ssndpeW5mw1EMqVZRNHnJhUfuWkKL7QomWF87LBK")
+                .into_vec()
+                .unwrap(),
+        );
+        let contract_state = client
+            .get_and_deserialize_account_data::<GoldContractBankState>(&contract_pubkey)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            contract_state.admin.to_string(),
+            "gcadHFMc51A2fFzppTQ6DgmLNymatHjGwENZSkJpJNr"
+        );
+        assert_ne!(contract_state.admin, contract_state.wd_auth);
     }
 }

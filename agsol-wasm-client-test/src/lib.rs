@@ -17,7 +17,11 @@ pub async fn get_owner(account: Pubkey) -> Result<Pubkey, JsValue> {
         .get_account(&account)
         .await
         .map_err(|e| JsValue::from(e.to_string()))?;
-    Ok(account.owner)
+    let decoded_bytes = bs58::decode(account.owner)
+        .into_vec()
+        .map_err(|e| JsValue::from(e.to_string()))?;
+    let owner = Pubkey::new(&decoded_bytes);
+    Ok(owner)
 }
 
 #[wasm_bindgen(js_name = "getLamports")]
