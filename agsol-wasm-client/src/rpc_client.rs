@@ -95,6 +95,9 @@ impl RpcClient {
             .to_string();
         let response: RpcResponse<RpcResultWithContext<Account>> = self.send(request).await?;
         Ok(response.result.value)
+        //let response: serde_json::Value = self.send(request).await?;
+        //println!("{:#?}", response);
+        //todo!();
     }
 
     /// Attempts to deserialize the contents of an account's data field into a
@@ -274,7 +277,7 @@ impl RpcClient {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::token_account::TokenAccount;
+    use crate::account::{ProgramAccount, TokenAccount};
     use solana_sdk::signer::keypair::Keypair;
     use solana_sdk::signer::Signer;
     use solana_sdk::system_transaction::transfer;
@@ -467,5 +470,51 @@ mod test {
             panic!("should be token account");
         };
         assert_eq!(token_acc_info.mint, mint_pubkey.to_string())
+    }
+
+    #[tokio::test]
+    async fn deserialize_go1d_account() {
+        let mut client = RpcClient::new(Net::Mainnet);
+        let gold_pubkey = Pubkey::new(
+            &bs58::decode("go1dcKcvafq8SDwmBKo6t2NVzyhvTEZJkMwnnfae99U")
+                .into_vec()
+                .unwrap(),
+        );
+
+        let gold_acc = client
+            .get_and_deserialize_parsed_account_data::<ProgramAccount>(&gold_pubkey)
+            .await
+            .unwrap();
+
+        if let ProgramAccount::Program(_program) = gold_acc {
+        } else {
+            panic!("should be a program account");
+        }
+    }
+
+    #[derive(BorshDeserialize)]
+    struct GoldContractBankState {
+        admin: Pubkey,
+        wd_auth: Pubkey,
+    }
+
+    #[tokio::test]
+    async fn get_borsh_serialized_account_data() {
+        let mut client = RpcClient::new(Net::Mainnet);
+        let contract_pubkey = Pubkey::new(
+            &bs58::decode("21d8ssndpeW5mw1EMqVZRNHnJhUfuWkKL7QomWF87LBK")
+                .into_vec()
+                .unwrap(),
+        );
+        let contract_state = client
+            .get_and_deserialize_account_data::<GoldContractBankState>(&contract_pubkey)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            contract_state.admin.to_string(),
+            "gcadHFMc51A2fFzppTQ6DgmLNymatHjGwENZSkJpJNr"
+        );
+        assert_ne!(contract_state.admin, contract_state.wd_auth);
     }
 }

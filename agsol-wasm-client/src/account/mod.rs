@@ -1,3 +1,8 @@
+mod program_account;
+mod token_account;
+pub use program_account::*;
+pub use token_account::*;
+
 use crate::rpc_config::Encoding;
 
 use anyhow::bail;
@@ -60,4 +65,36 @@ pub struct ParsedAccount {
     pub parsed: serde_json::Value,
     pub program: String,
     pub space: u64,
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use borsh::{BorshDeserialize, BorshSerialize};
+    use solana_program::pubkey::Pubkey;
+
+    #[derive(BorshSerialize, BorshDeserialize, Debug, PartialEq)]
+    struct TestData {
+        num: u8,
+        owner: Pubkey,
+        amount: u64,
+    }
+
+    #[test]
+    fn parse_borsh() {
+        let owner = Pubkey::new_unique();
+        let test_data = TestData {
+            num: 123,
+            owner,
+            amount: 987654321,
+        };
+
+        let borsh_serialized = test_data.try_to_vec().unwrap();
+        let encoded = base64::encode(borsh_serialized);
+
+        let account_data = AccountData::Encoded(encoded, Encoding::Base64);
+
+        let deserialized_data = account_data.parse_into_borsh::<TestData>().unwrap();
+        assert_eq!(test_data, deserialized_data);
+    }
 }
