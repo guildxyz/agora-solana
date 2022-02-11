@@ -23,7 +23,7 @@ pub struct Account {
 }
 
 #[derive(Deserialize, Debug)]
-#[serde(untagged)]
+#[serde(rename_all = "camelCase", untagged)]
 pub enum AccountData {
     Encoded(String, Encoding),
     JsonParsed(ParsedAccount),
@@ -48,7 +48,7 @@ impl AccountData {
     pub fn parse_into_json<T: DeserializeOwned>(self) -> Result<T, anyhow::Error> {
         match self {
             Self::JsonParsed(account) => {
-                serde_json::from_value(dbg!(account.parsed).clone()).map_err(|e| anyhow::anyhow!(e))
+                serde_json::from_value::<T>(account.parsed).map_err(|e| anyhow::anyhow!(e))
             }
             _ => bail!("cannot json-deserialize data"),
         }

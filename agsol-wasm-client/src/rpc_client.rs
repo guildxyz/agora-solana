@@ -274,6 +274,7 @@ impl RpcClient {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::token_account::TokenAccount;
     use solana_sdk::signer::keypair::Keypair;
     use solana_sdk::signer::Signer;
     use solana_sdk::system_transaction::transfer;
@@ -413,10 +414,7 @@ mod test {
         let token_program_id = Pubkey::new(&pubkey_bytes);
 
         let account = client.get_account(&token_program_id).await.unwrap();
-        assert_eq!(
-            account.owner.to_string(),
-            "BPFLoader2111111111111111111111111111111111"
-        );
+        assert_eq!(account.owner, "BPFLoader2111111111111111111111111111111111");
         assert!(account.executable);
     }
 
@@ -430,5 +428,44 @@ mod test {
         assert!(client.config.commitment.is_none());
         client.set_commitment(Some(CommitmentLevel::Processed));
         assert_eq!(client.config.commitment, Some(CommitmentLevel::Processed));
+    }
+
+    #[tokio::test]
+    async fn mint_and_token_account() {
+        let mut client = RpcClient::new(Net::Mainnet);
+        // get NFT mint account from gold.xyz "teletubbies" auction
+        let mint_pubkey = Pubkey::new(
+            &bs58::decode("B2Kdr5MCJLxJZU1Ek91c6cAkxe1FgFTwEXG6y7cQ9gU7")
+                .into_vec()
+                .unwrap(),
+        );
+        let mint = client
+            .get_and_deserialize_parsed_account_data::<TokenAccount>(&mint_pubkey)
+            .await
+            .unwrap();
+        let mint_info = if let TokenAccount::Mint(mint_info) = mint {
+            mint_info
+        } else {
+            panic!("should be mint account");
+        };
+        assert_eq!(mint_info.decimals, 0);
+        assert_eq!(mint_info.supply.parse::<u8>().unwrap(), 1);
+        // get NFT token account from gold.xyz "teletubbies" auction
+        let token_account_pubkey = Pubkey::new(
+            &bs58::decode("6xrSzvKGBux6FHZdRuKwrWwHxCcwdgfTVFVUaiPbsmSR")
+                .into_vec()
+                .unwrap(),
+        );
+        let token_account = client
+            .get_and_deserialize_parsed_account_data::<TokenAccount>(&token_account_pubkey)
+            .await
+            .unwrap();
+
+        let token_acc_info = if let TokenAccount::Account(account_info) = token_account {
+            account_info
+        } else {
+            panic!("should be token account");
+        };
+        assert_eq!(token_acc_info.mint, mint_pubkey.to_string())
     }
 }
