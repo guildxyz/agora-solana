@@ -15,8 +15,12 @@ impl<const N: usize> MaxSerializedLen for MaxLenString<N> {
 }
 
 impl<const N: usize> MaxLenString<N> {
-    pub fn clone_contents(&self) -> String {
-        self.contents.clone()
+    pub fn contents(&self) -> &str {
+        self.contents.as_str()
+    }
+
+    pub fn contents_mut(&mut self) -> &mut str {
+        self.contents.as_mut_str()
     }
 }
 
