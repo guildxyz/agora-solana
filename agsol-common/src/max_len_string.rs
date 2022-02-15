@@ -14,6 +14,16 @@ impl<const N: usize> MaxSerializedLen for MaxLenString<N> {
     const MAX_SERIALIZED_LEN: usize = 4 + N;
 }
 
+impl<const N: usize> MaxLenString<N> {
+    pub fn contents(&self) -> &str {
+        self.contents.as_str()
+    }
+
+    pub fn contents_mut(&mut self) -> &mut str {
+        self.contents.as_mut_str()
+    }
+}
+
 impl<const N: usize> TryFrom<String> for MaxLenString<N> {
     type Error = &'static str;
 
