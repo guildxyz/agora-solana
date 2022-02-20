@@ -1,7 +1,7 @@
 use agsol_borsh_schema::{generate_layouts, generate_output};
 use structopt::StructOpt;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 #[derive(Debug, StructOpt)]
@@ -85,7 +85,7 @@ fn main() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-fn clone_template(output_dir: &PathBuf) -> Result<(), anyhow::Error> {
+fn clone_template(output_dir: &Path) -> Result<(), anyhow::Error> {
     if !output_dir.is_dir() {
         let output_dir_string = output_dir.to_string_lossy();
         let mut cmd = Command::new("git")
