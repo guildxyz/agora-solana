@@ -9,5 +9,7 @@ repository = "https://github.com/agoraxyz/agora-solana"
 
 [dependencies]
 anyhow = "1.0"
+env_logger = "0.8.4"
+log = "0.4.0"
 structopt = "0.3"
 agsol-borsh-schema = { version = "0.0.2", path = "../agsol-borsh-schema", features = ["full"] }

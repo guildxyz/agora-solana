@@ -36,14 +36,18 @@ struct Glue {
 }
 
 fn main() -> Result<(), anyhow::Error> {
+    env_logger::init();
+
     let glue = Glue::from_args();
 
     clone_template(&glue.output)?;
+    log::info!("repository successfully cloned into {:?}", &glue.output);
 
     match glue.cmd {
         GlueCmd::Schema { path } => {
             let layouts = generate_layouts(path)?;
             generate_output(&layouts, &glue.output)?;
+            log::info!("schema successfully generated in {:?}", &glue.output);
         }
         GlueCmd::Wasm {
             path,
@@ -54,6 +58,7 @@ fn main() -> Result<(), anyhow::Error> {
             wasm_path.push(&glue.output);
             wasm_path.push("wasm-bindings");
             let wasm_output_path = wasm_path.to_string_lossy().to_string();
+            log::debug!("wasm output path: {:?}", &wasm_output_path);
             let mut args = vec![
                 "build".to_owned(),
                 path.to_string_lossy().to_string(),
