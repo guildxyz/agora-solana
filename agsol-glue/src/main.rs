@@ -91,7 +91,7 @@ fn clone_template(output_dir: &Path) -> Result<(), anyhow::Error> {
         let mut cmd = Command::new("git")
             .args([
                 "clone",
-                "https://github.com/AgoraSpaceDAO/borsh-glue-template.git",
+                "https://github.com/agoraxyz/borsh-glue-template.git",
                 &output_dir_string,
             ])
             .spawn()?;
