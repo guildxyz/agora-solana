@@ -55,6 +55,7 @@ fn main() -> Result<(), anyhow::Error> {
             features,
         } => {
             let mut wasm_path = std::env::current_dir()?;
+            log::debug!("wasm current directory: {:?}", &wasm_path);
             wasm_path.push(&glue.output);
             wasm_path.push("wasm-bindings");
             let wasm_output_path = wasm_path.to_string_lossy().to_string();
@@ -76,6 +77,8 @@ fn main() -> Result<(), anyhow::Error> {
                 args.push("--features".to_owned());
                 args.append(&mut features);
             }
+
+            log::debug!("wasm output path: {:#?}", &args);
 
             let mut cmd = Command::new("wasm-pack").args(&args).spawn()?;
             cmd.wait()?;
