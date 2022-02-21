@@ -1,80 +1,108 @@
 use agsol_borsh_schema::{generate_layouts, generate_output};
-use log::warn;
 use structopt::StructOpt;
 
-use std::fs;
-use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 #[derive(Debug, StructOpt)]
-struct Opt {
-    #[structopt(short = "-o", long, default_value = "contract-logic")]
+enum GlueCmd {
+    Schema {
+        #[structopt(
+            help = "path to the directory containing rust data structures for schema generation"
+        )]
+        path: PathBuf,
+    },
+    Wasm {
+        #[structopt(help = "path to the directory containing wasm bindings")]
+        path: PathBuf,
+        #[structopt(short = "-t", long, help = "build target for 'wasm-pack'")]
+        target: Option<String>,
+        #[structopt(short = "-f", long, help = "extra features for 'wasm-pack'")]
+        features: Option<Vec<String>>,
+    },
+}
+
+#[derive(Debug, StructOpt)]
+struct Glue {
+    #[structopt(
+        short = "-o",
+        long,
+        default_value = "glue",
+        help = "output directory for the generated wasm and schema artifacts"
+    )]
     output: PathBuf,
-    #[structopt(short = "-s", long)]
-    schema: Option<PathBuf>,
-    #[structopt(short = "-w", long)]
-    wasm: Option<PathBuf>,
-    #[structopt(short = "-t", long, default_value = "nodejs")]
-    target: String,
+    #[structopt(subcommand)]
+    cmd: GlueCmd,
 }
 
 fn main() -> Result<(), anyhow::Error> {
-    env_logger::init();
-    let opt = Opt::from_args();
+    let glue = Glue::from_args();
 
-    if !opt.output.is_dir() {
+    clone_template(&glue.output)?;
+
+    match glue.cmd {
+        GlueCmd::Schema { path } => {
+            let layouts = generate_layouts(path)?;
+            generate_output(&layouts, &glue.output)?;
+        }
+        GlueCmd::Wasm {
+            path,
+            target,
+            features,
+        } => {
+            let mut wasm_path = std::env::current_dir()?;
+            wasm_path.push(&glue.output);
+            wasm_path.push("wasm-bindings");
+            let wasm_output_path = wasm_path.to_string_lossy().to_string();
+            let mut args = vec![
+                "build".to_owned(),
+                path.to_string_lossy().to_string(),
+                "--out-dir".to_owned(),
+                wasm_output_path,
+                "--out-name".to_owned(),
+                "index".to_owned(),
+            ];
+            if let Some(target) = target {
+                args.push("--target".to_owned());
+                args.push(target);
+            }
+
+            if let Some(mut features) = features {
+                args.push("--features".to_owned());
+                args.append(&mut features);
+            }
+
+            let mut cmd = Command::new("wasm-pack").args(&args).spawn()?;
+            cmd.wait()?;
+
+            // remove auto-generated gitignore
+            wasm_path.push(".gitignore");
+            let mut cmd = Command::new("rm").args([wasm_path]).spawn()?;
+            cmd.wait()?;
+        }
+    }
+
+    Ok(())
+}
+
+fn clone_template(output_dir: &Path) -> Result<(), anyhow::Error> {
+    if !output_dir.is_dir() {
+        let output_dir_string = output_dir.to_string_lossy();
         let mut cmd = Command::new("git")
             .args([
                 "clone",
                 "https://github.com/AgoraSpaceDAO/borsh-glue-template.git",
-                &opt.output.to_string_lossy(),
+                &output_dir_string,
             ])
             .spawn()?;
 
         cmd.wait()?;
 
         let mut cmd = Command::new("rm")
-            .args(["-rf", &(opt.output.to_string_lossy() + "/.git")])
+            .args(["-rf", &(output_dir.to_string_lossy() + "/.git")])
             .spawn()?;
 
         cmd.wait()?;
     }
-
-    if let Some(schema_path) = opt.schema {
-        let layouts = generate_layouts(schema_path)?;
-        generate_output(&layouts, &opt.output)?;
-    } else {
-        warn!("No --schema <directory> provided. No schema was generated.");
-    }
-
-    if let Some(wasm_path) = opt.wasm {
-        let mut path = std::env::current_dir()?;
-        path.push(&opt.output);
-        path.push("wasm-factory");
-        let wasm_output_path = path.to_string_lossy().to_string();
-        let mut cmd = Command::new("wasm-pack")
-            .args([
-                "build",
-                &wasm_path.to_string_lossy(),
-                "--out-dir",
-                &wasm_output_path,
-                "--out-name",
-                "instructions",
-                "--target",
-                &opt.target,
-            ])
-            .spawn()?;
-
-        cmd.wait()?;
-    } else {
-        warn!("[INFO] No --wasm <directory> provided. No wasm was generated.");
-    }
-
-    if opt.output.is_dir() {
-        let mut file = fs::File::create(&*(opt.output.to_string_lossy() + "/.gitignore"))?;
-        write!(file, "*")?;
-    }
-
     Ok(())
 }
