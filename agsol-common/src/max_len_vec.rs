@@ -1,6 +1,6 @@
 use super::{MaxLenResult, MaxSerializedLen, CONTENTS_FULL};
 use borsh::{BorshDeserialize, BorshSerialize};
-use std::convert::TryFrom;
+use std::convert::{From, TryFrom};
 
 // NOTE anyhow doesn't compile under bpf it seems
 
@@ -104,6 +104,12 @@ impl<T, const N: usize> Default for MaxLenVec<T, N> {
     }
 }
 
+impl<T, const N: usize> From<MaxLenVec<T, N>> for Vec<T> {
+    fn from(rhs: MaxLenVec<T, N>) -> Self {
+        rhs.contents
+    }
+}
+
 #[cfg(test)]
 mod test_max_len_vec {
     use super::*;
@@ -165,6 +171,9 @@ mod test_max_len_vec {
         assert_eq!(vec.contents(), &[1, 2, 3, 4, 5]);
         vec.contents_mut()[2] = 10;
         assert_eq!(vec.contents(), &[1, 2, 10, 4, 5]);
+
+        let std_vec = Vec::<u8>::from(vec);
+        assert_eq!(std_vec, vec![1, 2, 10, 4, 5]);
     }
 
     #[test]
