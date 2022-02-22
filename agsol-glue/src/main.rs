@@ -42,8 +42,10 @@ fn main() -> Result<(), anyhow::Error> {
 
     match glue.cmd {
         GlueCmd::Schema { path } => {
+            let mut schema_path = glue.output;
+            schema_path.push("src");
             let layouts = generate_layouts(path)?;
-            generate_output(&layouts, &glue.output)?;
+            generate_output(&layouts, &schema_path)?;
         }
         GlueCmd::Wasm {
             path,
