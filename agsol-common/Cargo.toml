@@ -1,6 +1,6 @@
 [package]
 name = "agsol-common"
-version = "0.2.2-alpha"
+version = "0.2.2"
 edition = "2021"
 license = "MIT"
 authors = ["Agora DAO <mark@gold.xyz>"]
