@@ -2,7 +2,7 @@ use super::{MaxSerializedLen, CONTENTS_FULL};
 
 use borsh::{BorshDeserialize, BorshSerialize};
 
-use std::convert::TryFrom;
+use std::convert::{From, TryFrom};
 
 #[repr(C)]
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug)]
@@ -43,6 +43,12 @@ impl<const N: usize> TryFrom<&str> for MaxLenString<N> {
     }
 }
 
+impl<const N: usize> From<MaxLenString<N>> for String {
+    fn from(rhs: MaxLenString<N>) -> Self {
+        rhs.contents
+    }
+}
+
 #[cfg(test)]
 mod test_max_len_string {
     use super::*;
@@ -58,6 +64,8 @@ mod test_max_len_string {
         let string = "ASDEF".to_string();
         let max_len_string = TestString::try_from(string.clone()).unwrap();
         assert_eq!(string, max_len_string.contents);
+
+        assert_eq!(string_slice, String::from(max_len_string));
     }
 
     #[test]
