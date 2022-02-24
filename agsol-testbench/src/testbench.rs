@@ -193,16 +193,16 @@ impl Testbench {
         mint: &Pubkey,
     ) -> TestbenchTransactionResult<Pubkey> {
         let account_keypair = Keypair::new();
-        let mint_rent = self.rent.minimum_balance(TokenAccount::LEN);
+        let rent = self.rent.minimum_balance(TokenAccount::LEN);
         let instructions = [
             system_instruction::create_account(
                 &owner.pubkey(),
                 &account_keypair.pubkey(),
-                mint_rent,
+                rent,
                 TokenAccount::LEN as u64,
                 &spl_token::id(),
             ),
-            // unwrap is fine here because initialize_mint only throws error if the token program id is incorrect
+            // unwrap is fine here because initialize_account only throws error if the token program id is incorrect
             token_instruction::initialize_account(
                 &spl_token::id(),
                 &account_keypair.pubkey(),
@@ -212,8 +212,7 @@ impl Testbench {
             .unwrap(),
         ];
 
-        let payer = self.clone_payer();
-        self.process_transaction(&instructions, &payer, Some(&[&account_keypair]))
+        self.process_transaction(&instructions, owner, Some(&[&account_keypair]))
             .await
             .map(|transaction_result| transaction_result.map(|_| account_keypair.pubkey()))
     }
@@ -221,6 +220,7 @@ impl Testbench {
     pub async fn mint_to_account(
         &mut self,
         mint: &Pubkey,
+        mint_authority: &Keypair,
         account: &Pubkey,
         amount: u64,
     ) -> TestbenchTransactionResult<()> {
@@ -229,14 +229,13 @@ impl Testbench {
             &spl_token::id(),
             mint,
             account,
-            &self.payer().pubkey(), // mint authority
-            &[&self.payer().pubkey()],
+            &mint_authority.pubkey(),
+            &[&mint_authority.pubkey()],
             amount,
         )
         .unwrap();
 
-        let signer = self.clone_payer();
-        self.process_transaction(&[instruction], &signer, Some(&[&signer]))
+        self.process_transaction(&[instruction], mint_authority, None)
             .await
             .map(|transaction_result| transaction_result.map(|_| ()))
     }
