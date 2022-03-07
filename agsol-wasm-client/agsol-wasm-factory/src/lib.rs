@@ -1,4 +1,4 @@
-use heck::MixedCase;
+use heck::{MixedCase, CamelCase};
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span};
 use quote::quote;
@@ -40,15 +40,15 @@ use quote::quote;
 ///     }
 /// }
 ///
-/// wasm_instruction!(foo_factory);
+/// wasm_borsh_instruction!(foo_factory);
 /// // generated output:
-/// // #[wasm_bindgen, js_name = "fooFactory"]
-/// // fn foo_factory_wasm(serialized_input: &[u8]) -> Result<String, JsValue> { ... }
+/// // #[wasm_bindgen, js_name = "fooFactoryBorshWasm"]
+/// // fn foo_factory_borsh_wasm(serialized_input: &[u8]) -> Result<String, JsValue> { ... }
 /// ```
 #[proc_macro]
-pub fn wasm_instruction(input: TokenStream) -> TokenStream {
+pub fn wasm_borsh_instruction(input: TokenStream) -> TokenStream {
     let instruction_name = Ident::new(&input.to_string(), Span::call_site());
-    let function_name = Ident::new(&(input.to_string() + "_wasm"), Span::call_site());
+    let function_name = Ident::new(&(input.to_string() + "_borsh_wasm"), Span::call_site());
     let wasm_name = function_name.to_string().to_mixed_case();
 
     let output = quote! {
@@ -58,6 +58,38 @@ pub fn wasm_instruction(input: TokenStream) -> TokenStream {
                 .map_err(|e| wasm_bindgen::prelude::JsValue::from(e.to_string()))?;
             let instruction = #instruction_name(&args);
             Ok(serde_json::to_string(&instruction).unwrap())
+        }
+    };
+    output.into()
+}
+
+/// wasm_serde_instruction!(foo_factory);
+/// // generated output:
+/// // #[wasm_bindgen, js_name = "fooFactorySerdeWasm"]
+/// // fn foo_factory_serde_wasm(args: JsValue) -> Result<JsValue, JsValue> { ... }
+#[proc_macro]
+pub fn wasm_serde_instruction(input: TokenStream) -> TokenStream {
+    let instruction_name = Ident::new(&input.to_string(), Span::call_site());
+    let function_name = Ident::new(&(input.to_string() + "_serde_wasm"), Span::call_site());
+    let wasm_name = function_name.to_string().to_mixed_case();
+    let frontend_struct_name = Ident::new(&(Ident::new(
+        &("Frontend_".to_string() + &input.to_string() + "_args"),
+        Span::call_site(),
+    )
+    .to_string()
+    .to_camel_case()), Span::call_site());
+
+    let output = quote! {
+        #[wasm_bindgen(js_name = #wasm_name)]
+        // TODO: async?
+        pub fn #function_name(args: JsValue) -> Result<JsValue, JsValue> {
+            let frontend_args: #frontend_struct_name = args
+                .into_serde()
+                .map_err(|e| JsValue::from(e.to_string()))?;
+
+            let args = frontend_args.try_into().map_err(JsValue::from)?;
+            let instruction = #instruction_name(&args);
+            JsValue::from_serde(&instruction).map_err(|e| JsValue::from(e.to_string()))
         }
     };
     output.into()
