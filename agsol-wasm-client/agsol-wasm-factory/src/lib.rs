@@ -1,4 +1,4 @@
-use heck::{MixedCase, CamelCase};
+use heck::{CamelCase, MixedCase};
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span};
 use quote::quote;
@@ -72,12 +72,15 @@ pub fn wasm_serde_instruction(input: TokenStream) -> TokenStream {
     let instruction_name = Ident::new(&input.to_string(), Span::call_site());
     let function_name = Ident::new(&(input.to_string() + "_serde_wasm"), Span::call_site());
     let wasm_name = function_name.to_string().to_mixed_case();
-    let frontend_struct_name = Ident::new(&(Ident::new(
-        &("Frontend_".to_string() + &input.to_string() + "_args"),
+    let frontend_struct_name = Ident::new(
+        &(Ident::new(
+            &("Frontend_".to_string() + &input.to_string() + "_args"),
+            Span::call_site(),
+        )
+        .to_string()
+        .to_camel_case()),
         Span::call_site(),
-    )
-    .to_string()
-    .to_camel_case()), Span::call_site());
+    );
 
     let output = quote! {
         #[wasm_bindgen(js_name = #wasm_name)]

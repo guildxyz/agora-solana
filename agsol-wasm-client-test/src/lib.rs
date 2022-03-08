@@ -2,8 +2,6 @@
 // on the wasm_bindgen expressions
 #![allow(clippy::unused_unit)]
 
-
-
 use agsol_wasm_client::{wasm_borsh_instruction, wasm_serde_instruction, Net, RpcClient};
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::instruction::{AccountMeta, Instruction};
@@ -90,7 +88,8 @@ fn test_wasm_borsh_instruction_factory() {
     };
     let serialized_instruction = args.try_to_vec().unwrap();
     let instruction: Instruction =
-        serde_json::from_str(&test_instruction_borsh_wasm(&serialized_instruction).unwrap()).unwrap();
+        serde_json::from_str(&test_instruction_borsh_wasm(&serialized_instruction).unwrap())
+            .unwrap();
     assert_eq!(instruction.data, &[0, 1, 15, 0, 0, 0]);
     assert_eq!(instruction.accounts[0].pubkey, args.pubkey);
     assert_eq!(
@@ -138,8 +137,13 @@ fn test_wasm_serde_instruction_factory() {
         input: Some(15),
     };
     let args_json = JsValue::from_serde(&serde_json::to_string(&args).unwrap()).unwrap();
-    let instruction: Instruction = 
-        serde_json::from_str(&test_instruction_serde_wasm(args_json).unwrap().as_string().unwrap()).unwrap();
+    let instruction: Instruction = serde_json::from_str(
+        &test_instruction_serde_wasm(args_json)
+            .unwrap()
+            .as_string()
+            .unwrap(),
+    )
+    .unwrap();
     assert_eq!(instruction.data, &[0, 1, 15, 0, 0, 0]);
     assert_eq!(instruction.accounts[0].pubkey, args.pubkey);
     assert_eq!(
