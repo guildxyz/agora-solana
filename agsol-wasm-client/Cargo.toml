@@ -1,6 +1,6 @@
 [package]
 name = "agsol-wasm-client"
-version = "0.0.1-alpha.5"
+version = "0.0.1-alpha.6"
 edition = "2021"
 license = "MIT"
 authors = ["Agora DAO <mark@gold.xyz>"]
